@@ -1,4 +1,5 @@
 import { sendEvent } from "./EventChannel";
+import { createEvent } from "../models/events/Event";
 import type { UiClickEvent } from "../models/events/UiClickEvent";
 import type { UiKeyEvent } from "../models/events/UiKeyEvent";
 import type { UiScrollEvent } from "../models/events/UiScrollEvent";
@@ -6,24 +7,23 @@ import type { UiTouchEvent } from "../models/events/UiTouchEvent";
 
 document.addEventListener("click", (e) => {
   const target = e.target as HTMLElement | null;
-  const clickEvent: UiClickEvent = {
+  sendEvent(createEvent<UiClickEvent>({
     type: "click",
-    timestamp: Date.now(),
+    url: window.location.href,
     button: e.button,
     clientX: e.clientX,
     clientY: e.clientY,
     targetTag: target?.tagName,
     targetId: target?.id || undefined,
     targetClass: target?.className || undefined,
-  };
-  sendEvent(clickEvent);
+  }));
 });
 
 function createKeyEvent(type: UiKeyEvent["type"], e: KeyboardEvent): UiKeyEvent {
   const target = e.target as HTMLElement | null;
-  return {
+  return createEvent<UiKeyEvent>({
     type,
-    timestamp: Date.now(),
+    url: window.location.href,
     key: e.key,
     code: e.code,
     altKey: e.altKey,
@@ -33,7 +33,7 @@ function createKeyEvent(type: UiKeyEvent["type"], e: KeyboardEvent): UiKeyEvent 
     targetTag: target?.tagName,
     targetId: target?.id || undefined,
     targetClass: target?.className || undefined,
-  };
+  });
 }
 
 document.addEventListener("keydown", (e) => {
@@ -46,16 +46,15 @@ document.addEventListener("keyup", (e) => {
 
 document.addEventListener("scroll", (e) => {
   const target = e.target as HTMLElement | null;
-  const scrollEvent: UiScrollEvent = {
+  sendEvent(createEvent<UiScrollEvent>({
     type: "scroll",
-    timestamp: Date.now(),
+    url: window.location.href,
     scrollX: window.scrollX,
     scrollY: window.scrollY,
     targetTag: target?.tagName,
     targetId: target?.id || undefined,
     targetClass: target?.className || undefined,
-  };
-  sendEvent(scrollEvent);
+  }));
 });
 
 function createTouchEvent(
@@ -63,9 +62,9 @@ function createTouchEvent(
   touch: Touch,
 ): UiTouchEvent {
   const target = touch.target as HTMLElement | null;
-  return {
+  return createEvent<UiTouchEvent>({
     type,
-    timestamp: Date.now(),
+    url: window.location.href,
     identifier: touch.identifier,
     clientX: touch.clientX,
     clientY: touch.clientY,
@@ -76,7 +75,7 @@ function createTouchEvent(
     targetTag: target?.tagName,
     targetId: target?.id || undefined,
     targetClass: target?.className || undefined,
-  };
+  });
 }
 
 document.addEventListener("touchstart", (e) => {
