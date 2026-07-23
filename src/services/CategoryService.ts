@@ -2,6 +2,7 @@ import type { Option } from "../models/Option";
 import type { UrlCategory } from "../models/types";
 import { client, initClient } from "./AI";
 import { urlCategoryDB } from "./UrlCategoryDataBaseManager";
+import { loadOption } from "./OptionStore";
 
 const categorifyPrompt = `
 You are a website URL classifier. You will be given a URL and the HTML content of its corresponding web page. Based on both, determine the category that the URL belongs to.
@@ -109,24 +110,34 @@ function extractDomain(url: string): string | null {
   }
 }
 
+async function getCategoryFromDB(
+  url: string,
+): Promise<{ domain: string; category: UrlCategory } | null> {
+  const domain = extractDomain(url);
+  if (!domain) {
+    return null;
+  }
+  const record = await urlCategoryDB.lookup(domain);
+  if (!record) {
+    return null;
+  }
+  return { domain: record.domain, category: record.category };
+}
+
 export async function getCategory(
-  option: Option,
   url: string,
   html: string,
+  option?: Option,
 ): Promise<{ domain: string; category: UrlCategory }> {
-  const domain = extractDomain(url);
-  if (domain) {
-    const cached = await urlCategoryDB.lookupCategory(domain);
-    if (cached) {
-      const record = await urlCategoryDB.lookup(domain);
-      return { domain: record?.domain ?? domain, category: cached };
-    }
+  const opt = option ?? (await loadOption());
+
+  const cached = await getCategoryFromDB(url);
+  if (cached) {
+    return cached;
   }
 
-
-  initClient(option.aiProvider, option.apiKey);
-  const result = await categorifyModel(option.categorifyModel, url, html);
-
+  initClient(opt.aiProvider, opt.apiKey);
+  const result = await categorifyModel(opt.categorifyModel, url, html);
 
   try {
     await urlCategoryDB.put(result.domain, result.category);
@@ -135,4 +146,18 @@ export async function getCategory(
   }
 
   return result;
+}
+
+export async function setCategory(
+  domain: string,
+  category: UrlCategory,
+  option?: Option,
+): Promise<void> {
+  const opt = option ?? (await loadOption());
+  initClient(opt.aiProvider, opt.apiKey);
+  try {
+    await urlCategoryDB.put(domain, category);
+  } catch (e: unknown) {
+    throw new Error("Failed to set category in database: " + (e as Error).message, { cause: e });
+  }
 }
