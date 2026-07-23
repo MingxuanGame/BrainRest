@@ -1,4 +1,5 @@
 import "./TabListener";
+import "./WindowFocusListener";
 import { queue } from "./EventQueue";
 
 chrome.runtime.onConnect.addListener((port) => {
