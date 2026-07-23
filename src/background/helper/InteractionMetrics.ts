@@ -1,8 +1,11 @@
 import { calculateDeleteKeyRatio } from "./KeyboardAnalyzer";
 import { calcuateMouseAnthropy, calculateEyeHandDelay } from "./MouseTrackAnalyzer";
 import { calculateSwitchEntropy } from "./SwitchEntropyAnalyzer";
+import { calculateEventFrequency } from "./EventFrequencyAnalyzer";
 
 const MAX_EYE_HAND_DELAY_MS = 2000;
+// 归一化基准：达到该每秒事件数即视为满负荷（100）
+const MAX_EVENTS_PER_SEC = 20;
 
 export interface InteractionScores {
   /** Mouse direction entropy, scaled from [0, 1] to [0, 100]. */
@@ -13,6 +16,8 @@ export interface InteractionScores {
   deleteKeyRatio: number;
   /** Cross-category tab/window switch entropy, scaled from [0, 1] to [0, 100]. */
   switchEntropy: number;
+  /** Per-second event frequency, scaled from [0, MAX_EVENTS_PER_SEC] to [0, 100]. */
+  eventFrequency: number;
 }
 
 function scaleTo100(value: number, maximum: number): number {
@@ -29,5 +34,6 @@ export async function calculateInteractionScores(): Promise<InteractionScores> {
     eyeHandDelay: eyeHandDelay === null ? null : scaleTo100(eyeHandDelay, MAX_EYE_HAND_DELAY_MS),
     deleteKeyRatio: scaleTo100(calculateDeleteKeyRatio(), 1),
     switchEntropy: scaleTo100(switchEntropy, 1),
+    eventFrequency: scaleTo100(calculateEventFrequency(), MAX_EVENTS_PER_SEC),
   };
 }

@@ -1,6 +1,6 @@
 import type { Event } from "../models/events/Event";
 
-const SLIDE_WINDOW_MS = 5000;
+export const SLIDE_WINDOW_MS = 5000;
 
 class SlidingWindowQueue {
     private buffer: Event[] = [];

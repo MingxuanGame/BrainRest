@@ -7,7 +7,8 @@ import type { UiScrollEvent } from "../models/events/UiScrollEvent";
 import type { UiTouchEvent } from "../models/events/UiTouchEvent";
 
 let lastMouseMoveAt = 0;
-const MOUSE_MOVE_SAMPLE_MS = 50;
+// 主动降低鼠标轨迹采样率，避免高频 mousemove 淹没按秒事件频率统计
+const MOUSE_MOVE_SAMPLE_MS = 200;
 
 document.addEventListener("mousemove", (e) => {
   const now = Date.now();
