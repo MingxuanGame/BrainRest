@@ -13,6 +13,13 @@ export default {
 
   permissions: ["tabs", "windows", "storage"],
 
+  // background service worker 调用 AI 接口需要 host 权限；
+  // 自定义 aiProvider 为其他绝对 URL 时需在此追加对应 host
+  host_permissions: [
+    "https://api.openai.com/*",
+    "https://api.deepseek.com/*",
+  ],
+
   // action:{
   //     default_popup:"src/popup/index.html"
   // },
