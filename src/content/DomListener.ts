@@ -2,8 +2,29 @@ import { sendEvent } from "./EventChannel";
 import { createEvent } from "../models/events/Event";
 import type { UiClickEvent } from "../models/events/UiClickEvent";
 import type { UiKeyEvent } from "../models/events/UiKeyEvent";
+import type { UiMouseMoveEvent } from "../models/events/UiMouseMoveEvent";
 import type { UiScrollEvent } from "../models/events/UiScrollEvent";
 import type { UiTouchEvent } from "../models/events/UiTouchEvent";
+
+let lastMouseMoveAt = 0;
+const MOUSE_MOVE_SAMPLE_MS = 50;
+
+document.addEventListener("mousemove", (e) => {
+  const now = Date.now();
+  if (now - lastMouseMoveAt < MOUSE_MOVE_SAMPLE_MS) return;
+
+  lastMouseMoveAt = now;
+  const target = e.target as HTMLElement | null;
+  sendEvent(createEvent<UiMouseMoveEvent>({
+    type: "mousemove",
+    url: window.location.href,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    targetTag: target?.tagName,
+    targetId: target?.id || undefined,
+    targetClass: target?.className || undefined,
+  }));
+});
 
 document.addEventListener("click", (e) => {
   const target = e.target as HTMLElement | null;
