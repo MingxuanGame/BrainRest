@@ -5,6 +5,7 @@ import type { UiKeyEvent } from "../models/events/UiKeyEvent";
 import type { UiMouseMoveEvent } from "../models/events/UiMouseMoveEvent";
 import type { UiScrollEvent } from "../models/events/UiScrollEvent";
 import type { UiTouchEvent } from "../models/events/UiTouchEvent";
+import type { FullscreenChange } from "../models/events/FullscreenChange";
 
 let lastMouseMoveAt = 0;
 // 主动降低鼠标轨迹采样率，避免高频 mousemove 淹没按秒事件频率统计
@@ -116,4 +117,12 @@ document.addEventListener("touchmove", (e) => {
   for (const touch of e.changedTouches) {
     sendEvent(createTouchEvent("touchmove", touch));
   }
+});
+
+document.addEventListener("fullscreenchange", () => {
+  sendEvent(createEvent<FullscreenChange>({
+    type: "fullscreen_change",
+    url: window.location.href,
+    active: document.fullscreenElement !== null,
+  }));
 });

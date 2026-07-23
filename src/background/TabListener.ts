@@ -2,6 +2,7 @@ import { createEvent } from "../models/events/Event";
 import type { TabCreated } from "../models/events/TabCreated";
 import type { TabClosed } from "../models/events/TabClosed";
 import type { TabChanged } from "../models/events/TabChanged";
+import type { TabActivated } from "../models/events/TabActivated";
 import { queue } from "./EventQueue";
 
 const tabUrls = new Map<number, string>();
@@ -37,5 +38,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     url: tab.url ?? changeInfo.url,
     old_url,
     new_url: changeInfo.url,
+  }));
+});
+
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  queue.push(createEvent<TabActivated>({
+    type: "tab_activated",
+    tabId,
+    windowId,
+    url: tabUrls.get(tabId) ?? "",
   }));
 });

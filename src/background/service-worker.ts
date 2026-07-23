@@ -1,8 +1,19 @@
 import "./TabListener";
 import "./WindowFocusListener";
+import "./IdleListener";
 import {queue} from "./EventQueue";
+import {dispatcher} from "./RuleEventDispatcher";
 import {getCategory} from "../services/CategoryService";
 import {isCategorizeRequest, type CategorizeResponse} from "../messages";
+
+// 启动疲劳指数计算循环，并在触发阈值时输出（后续可接入提醒 UI）
+dispatcher.start();
+dispatcher.onTrigger((result) => {
+  console.log(
+    `[BrainRest] fatigue=${result.fatigue.toFixed(1)} level=${result.level} R=${result.restWeight}`,
+    result.metrics,
+  );
+});
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "event-stream") return;
