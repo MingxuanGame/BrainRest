@@ -9,6 +9,16 @@ export default defineConfig({
     react(),
     crx({
       manifest,
+      contentScripts: {
+        standaloneFiles: ["src/content/index.ts"],
+      },
     }),
   ],
+  build: {
+    sourcemap: true,
+    minify: false,
+  },
+  server: {
+    sourcemapIgnoreList: () => false,
+  },
 });

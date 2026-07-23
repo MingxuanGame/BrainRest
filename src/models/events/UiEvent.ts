@@ -1,7 +1,7 @@
-import type { BaseEvent } from './BaseEvent'
+import type { Event } from './Event'
 
 /** Base interface for all captured UI interaction events */
-export interface UiEvent extends BaseEvent {
+export interface UiEvent extends Event {
   /** The event type (e.g. 'click', 'scroll') */
   type: string
   /** Tag name of the target element */

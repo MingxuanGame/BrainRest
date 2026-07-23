@@ -1,5 +1,7 @@
 /** Common fields shared by all tracked events */
-export interface BaseEvent {
+export interface Event {
   /** Timestamp (ms) when the event occurred */
   timestamp: number
+  /** Discriminant literal */
+  type:string
 }

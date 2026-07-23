@@ -1,0 +1,98 @@
+import { sendEvent } from "./EventChannel";
+import type { UiClickEvent } from "../models/events/UiClickEvent";
+import type { UiKeyEvent } from "../models/events/UiKeyEvent";
+import type { UiScrollEvent } from "../models/events/UiScrollEvent";
+import type { UiTouchEvent } from "../models/events/UiTouchEvent";
+
+document.addEventListener("click", (e) => {
+  const target = e.target as HTMLElement | null;
+  const clickEvent: UiClickEvent = {
+    type: "click",
+    timestamp: Date.now(),
+    button: e.button,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    targetTag: target?.tagName,
+    targetId: target?.id || undefined,
+    targetClass: target?.className || undefined,
+  };
+  sendEvent(clickEvent);
+});
+
+function createKeyEvent(type: UiKeyEvent["type"], e: KeyboardEvent): UiKeyEvent {
+  const target = e.target as HTMLElement | null;
+  return {
+    type,
+    timestamp: Date.now(),
+    key: e.key,
+    code: e.code,
+    altKey: e.altKey,
+    ctrlKey: e.ctrlKey,
+    shiftKey: e.shiftKey,
+    metaKey: e.metaKey,
+    targetTag: target?.tagName,
+    targetId: target?.id || undefined,
+    targetClass: target?.className || undefined,
+  };
+}
+
+document.addEventListener("keydown", (e) => {
+  sendEvent(createKeyEvent("keydown", e)  );
+});
+
+document.addEventListener("keyup", (e) => {
+  sendEvent(createKeyEvent("keyup", e)  );
+});
+
+document.addEventListener("scroll", (e) => {
+  const target = e.target as HTMLElement | null;
+  const scrollEvent: UiScrollEvent = {
+    type: "scroll",
+    timestamp: Date.now(),
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    targetTag: target?.tagName,
+    targetId: target?.id || undefined,
+    targetClass: target?.className || undefined,
+  };
+  sendEvent(scrollEvent);
+});
+
+function createTouchEvent(
+  type: UiTouchEvent["type"],
+  touch: Touch,
+): UiTouchEvent {
+  const target = touch.target as HTMLElement | null;
+  return {
+    type,
+    timestamp: Date.now(),
+    identifier: touch.identifier,
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    force: touch.force,
+    radiusX: touch.radiusX,
+    radiusY: touch.radiusY,
+    rotationAngle: touch.rotationAngle,
+    targetTag: target?.tagName,
+    targetId: target?.id || undefined,
+    targetClass: target?.className || undefined,
+  };
+}
+
+document.addEventListener("touchstart", (e) => {
+  for (const touch of e.changedTouches) {
+    sendEvent(createTouchEvent("touchstart", touch));
+  }
+});
+
+document.addEventListener("touchend", (e) => {
+  for (const touch of e.changedTouches) {
+    sendEvent(createTouchEvent("touchend", touch));
+  }
+});
+
+document.addEventListener("touchmove", (e) => {
+  for (const touch of e.changedTouches) {
+    sendEvent(createTouchEvent("touchmove", touch));
+  }
+});
