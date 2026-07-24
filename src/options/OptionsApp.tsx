@@ -6,8 +6,9 @@ import { urlCategoryDB } from "../services/UrlCategoryDataBaseManager";
 import { timeDataStore } from "../services/TimeDataStore";
 import { sleepTimeStore } from "../services/SleepTimeStore";
 import type { Option } from "../models/Option";
-import { Card, InlineNotice } from "../ui/components";
+import { Card, InlineNotice, Toggle } from "../ui/components";
 import { PRODUCT_BOUNDARY_COPY } from "../ui/bridge";
+import DebugModePanel from "./DebugModePanel";
 
 /** provider 下拉项：openai / deepseek / 自定义绝对 URL */
 type ProviderChoice = "openai" | "deepseek" | "custom";
@@ -39,6 +40,8 @@ export default function OptionsApp() {
     // API Key 只保存在当前输入框状态，留空表示保持已存值不变
     const [apiKeyInput, setApiKeyInput] = useState("");
     const [keyConfigured, setKeyConfigured] = useState(false);
+    // 调试模式仅当前会话生效，不持久化
+    const [debugMode, setDebugMode] = useState(false);
 
     const refresh = useCallback(async () => {
         const option = await loadOption();
@@ -146,6 +149,7 @@ export default function OptionsApp() {
             <nav className="section-nav" aria-label="设置章节">
                 <a href="#ai">AI</a>
                 <a href="#data">数据</a>
+                <a href="#debug">调试</a>
             </nav>
 
             {notice ? <InlineNotice tone={notice.tone}>{notice.message}</InlineNotice> : null}
@@ -254,6 +258,18 @@ export default function OptionsApp() {
                         清除全部本地数据
                     </button>
                 </Card>
+            </div>
+
+            <div id="debug">
+                <Card eyebrow="Debug" title="开发者选项">
+                    <Toggle
+                        checked={debugMode}
+                        onChange={setDebugMode}
+                        label="调试模式"
+                        description="注入监测数据、手动触发 AI 分类与引擎计算、查看实时引擎数据；仅当前会话生效"
+                    />
+                </Card>
+                {debugMode ? <DebugModePanel /> : null}
             </div>
         </main>
     );
