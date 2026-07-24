@@ -90,6 +90,8 @@ export interface BRIResult {
     level: LoadLevel
     /** 命中的触发路径（null = 未触发） */
     triggerPath: TriggerPath | null
+    /** 页面类型 */
+    pageType: UrlCategory | null
     /** 认知信号明细 */
     cognitiveSignals: CognitiveSignals
     /** 身体信号明细 */

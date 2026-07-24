@@ -17,6 +17,13 @@ import {
 } from '../../background/DomainTimeTracker'
 import { createEvent } from '../../models/events/Event'
 import type { Event } from '../../models/events/Event'
+import { suggestions } from '../../data/suggestions'
+import { triggerBaseline } from '../../data/trigger-baseline'
+import { fatigueTitle } from '../../data/fatigue-title'
+import { TYPE_BASELINE, type TriggerPath } from '../../background/engine/types'
+import type { UrlCategory } from '../../models/types'
+import type { BRIResult } from '../../background/engine/types'
+import { buildRestSuggestion } from '../../background/engine/RestSuggestion'
 
 /* ------------------------------------------------------------------ */
 /* 类型定义                                                            */
@@ -906,6 +913,155 @@ const persistenceGroup: TestGroup = {
     ],
 }
 
+/* ------------------------------------------------------------------ */
+/* 分组 11：休息建议数据                                                */
+/* ------------------------------------------------------------------ */
+
+/** 构造用于测试的 BRIResult（仅填充 buildRestSuggestion 关注的字段） */
+function mockBriResult(triggerPath: TriggerPath | null, pageType: UrlCategory | null): BRIResult {
+    return {
+        clCog: 0,
+        clPhy: 0,
+        briRaw: 0,
+        bri: 0,
+        briDisplay: 0,
+        kPersonal: 1,
+        cData: 1,
+        level: 'high',
+        triggerPath,
+        pageType,
+        cognitiveSignals: { D: 0, B: 0, rho: 0, S: 0, P: 0, T: 0 },
+        physicalSignals: { E: 0, L: 0, I: 0, R: 0, R_rest: 0 },
+        timestamp: Date.now(),
+    }
+}
+
+const restDataGroup: TestGroup = {
+    id: 'rest-data',
+    name: '休息建议数据',
+    scope: 'src/data',
+    subTests: [
+        {
+            id: 'rest-suggestions-coverage',
+            name: 'suggestions 覆盖全部 UrlCategory',
+            run: async () => {
+                const expected = Object.keys(TYPE_BASELINE).sort()
+                const actual = Object.keys(suggestions).sort()
+                const missing = expected.filter((k) => !actual.includes(k))
+                const extra = actual.filter((k) => !expected.includes(k))
+                if (missing.length > 0 || extra.length > 0) {
+                    throw new Error(`缺失: [${missing.join(', ')}]，多余: [${extra.join(', ')}]`)
+                }
+                return `已覆盖全部 ${expected.length} 类页面类型`
+            },
+        },
+        {
+            id: 'rest-suggestions-baseline',
+            name: 'suggestions.baseline 与 TYPE_BASELINE 一致',
+            run: async () => {
+                for (const [cat, s] of Object.entries(suggestions)) {
+                    const expected = TYPE_BASELINE[cat as UrlCategory]
+                    if (s.baseline !== expected) {
+                        throw new Error(`${cat}: baseline=${s.baseline}，应为 ${expected}`)
+                    }
+                }
+                return '全部页面类型 baseline 与引擎 TYPE_BASELINE 对齐'
+            },
+        },
+        {
+            id: 'rest-suggestions-fields',
+            name: 'suggestions 字段有效性',
+            run: async () => {
+                for (const [cat, s] of Object.entries(suggestions)) {
+                    if (s.durationMin <= 0) throw new Error(`${cat}: durationMin 非正`)
+                    if (s.activities.length === 0) throw new Error(`${cat}: activities 为空`)
+                    if (s.message.trim() === '') throw new Error(`${cat}: message 为空`)
+                }
+                return '全部条目 durationMin/activities/message 有效'
+            },
+        },
+        {
+            id: 'rest-trigger-baseline',
+            name: 'triggerBaseline 覆盖 A/B/C 且区间合法',
+            run: async () => {
+                const paths: TriggerPath[] = ['A', 'B', 'C']
+                for (const p of paths) {
+                    const b = triggerBaseline[p]
+                    if (!b) throw new Error(`缺少路径 ${p}`)
+                    const [min, max] = b.durationMin
+                    if (!(min > 0 && min <= max)) {
+                        throw new Error(`${p}: durationMin 区间非法 [${min}, ${max}]`)
+                    }
+                    if (b.coreActivities.length === 0) throw new Error(`${p}: coreActivities 为空`)
+                }
+                return '路径 A/B/C 齐全，时长区间与活动均有效'
+            },
+        },
+        {
+            id: 'rest-fatigue-title',
+            name: 'fatigueTitle 覆盖 triggerBaseline 所有 fatigue',
+            run: async () => {
+                for (const [p, b] of Object.entries(triggerBaseline)) {
+                    if (!fatigueTitle[b.fatigue]) {
+                        throw new Error(
+                            `路径 ${p} 的 fatigue=${b.fatigue} 在 fatigueTitle 中无标题`,
+                        )
+                    }
+                }
+                return '全部 fatigue 类型均有对应标题'
+            },
+        },
+        {
+            id: 'rest-build-null',
+            name: 'buildRestSuggestion 未触发时返回 null',
+            run: async () => {
+                const out = buildRestSuggestion(mockBriResult(null, 'deep_work_productivity'))
+                if (out !== null) {
+                    throw new Error(`triggerPath=null 应返回 null，实际返回对象`)
+                }
+                return 'triggerPath=null 时正确返回 null'
+            },
+        },
+        {
+            id: 'rest-build-page',
+            name: 'buildRestSuggestion 命中页面类型优先取细化建议',
+            run: async () => {
+                const out = buildRestSuggestion(mockBriResult('A', 'deep_work_productivity'))
+                if (!out) throw new Error('应返回建议对象，实际为 null')
+                const page = suggestions.deep_work_productivity
+                if (out.title !== fatigueTitle.cognitive) {
+                    throw new Error(`title 应为「${fatigueTitle.cognitive}」，实际「${out.title}」`)
+                }
+                if (out.body !== page.message) {
+                    throw new Error('body 应取页面类型的 message')
+                }
+                if (out.duration !== `${page.durationMin} 分钟`) {
+                    throw new Error(
+                        `duration 应为「${page.durationMin} 分钟」，实际「${out.duration}」`,
+                    )
+                }
+                return `title=「${out.title}」duration=「${out.duration}」`
+            },
+        },
+        {
+            id: 'rest-build-fallback',
+            name: 'buildRestSuggestion 无页面类型回退到路径基调',
+            run: async () => {
+                const out = buildRestSuggestion(mockBriResult('C', null))
+                if (!out) throw new Error('应返回建议对象，实际为 null')
+                const base = triggerBaseline.C
+                if (out.title !== fatigueTitle.physical) {
+                    throw new Error(`title 应为「${fatigueTitle.physical}」，实际「${out.title}」`)
+                }
+                if (out.duration !== `${base.durationMin[0]}–${base.durationMin[1]} 分钟`) {
+                    throw new Error(`duration 应为区间格式，实际「${out.duration}」`)
+                }
+                return `回退基调正确，duration=「${out.duration}」`
+            },
+        },
+    ],
+}
+
 export const TEST_GROUPS: TestGroup[] = [
     swGroup,
     queueGroup,
@@ -917,4 +1073,5 @@ export const TEST_GROUPS: TestGroup[] = [
     urlDbGroup,
     eventDbGroup,
     persistenceGroup,
+    restDataGroup,
 ]

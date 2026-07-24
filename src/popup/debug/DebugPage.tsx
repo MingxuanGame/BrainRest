@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { TEST_GROUPS, type SubTest, type TestGroup } from './tests'
+import RestSuggestionPanel from './RestSuggestionPanel'
 
 /* ------------------------------------------------------------------ */
 /* 状态模型                                                            */
@@ -220,6 +221,8 @@ export default function DebugPage({ onBack }: { onBack: () => void }) {
                     onRunGroup={() => void runGroup(group)}
                 />
             ))}
+
+            <RestSuggestionPanel />
         </div>
     )
 }

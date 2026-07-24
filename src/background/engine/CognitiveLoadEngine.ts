@@ -216,6 +216,7 @@ class CognitiveLoadEngine {
                 cognitiveSignals: { D: 0, B: 0, rho: 0, S: 0, P: 0, T: 0 },
                 physicalSignals: { E: 0, L: 0, I: 0, R: 0, R_rest: 0 },
                 timestamp: Date.now(),
+                pageType: this.currentPageType,
             }
             return
         }
@@ -279,6 +280,7 @@ class CognitiveLoadEngine {
             cognitiveSignals,
             physicalSignals,
             timestamp: Date.now(),
+            pageType: this.currentPageType,
         }
 
         // 10. 定期自动校准检查（内部有 7 天间隔保护）
