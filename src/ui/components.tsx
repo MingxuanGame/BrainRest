@@ -65,3 +65,36 @@ export function InlineNotice({
         </div>
     );
 }
+
+/** 时刻输入（label + <input type="time">，值为 [小时, 分钟] 元组） */
+export function TimeField({
+    label,
+    value,
+    onChange,
+    description,
+}: {
+    label: string;
+    value: [number, number];
+    onChange: (value: [number, number]) => void;
+    description?: string;
+}) {
+    const hh = String(value[0]).padStart(2, "0");
+    const mm = String(value[1]).padStart(2, "0");
+    return (
+        <label className="field">
+            <span>{label}</span>
+            <input
+                type="time"
+                value={`${hh}:${mm}`}
+                onChange={(event) => {
+                    const [h, m] = event.currentTarget.value.split(":").map(Number);
+                    // 清空输入框时 value 为空串，split 结果为 NaN，忽略保持原值
+                    if (Number.isFinite(h) && Number.isFinite(m)) {
+                        onChange([h, m]);
+                    }
+                }}
+            />
+            {description ? <small className="field-hint">{description}</small> : null}
+        </label>
+    );
+}

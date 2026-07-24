@@ -1,4 +1,4 @@
-import { Brain, Database, KeyRound, LoaderCircle, Sparkles, Trash2 } from "lucide-react";
+import { Brain, Clock, Database, KeyRound, LoaderCircle, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { clearOption, loadOption, saveOption } from "../services/OptionStore";
 import { eventDB } from "../services/EventDataBaseManager";
@@ -6,30 +6,15 @@ import { urlCategoryDB } from "../services/UrlCategoryDataBaseManager";
 import { timeDataStore } from "../services/TimeDataStore";
 import { routineStore } from "../services/RoutineStore";
 import type { Option } from "../models/Option";
-import { Card, InlineNotice, Toggle } from "../ui/components";
+import { Card, InlineNotice, TimeField, Toggle } from "../ui/components";
 import { PRODUCT_BOUNDARY_COPY } from "../ui/bridge";
 import { isDevEnvironment } from "../utils/env";
+import { joinProvider, PROVIDER_LABELS, type ProviderChoice, splitProvider } from "./provider";
+import Onboarding from "./Onboarding";
 import DebugModePanel from "./DebugModePanel";
 
 /** 是否展示调试/开发者能力：生产环境（商店安装）整体隐藏，模块加载时判定一次 */
 const DEBUG_AVAILABLE = isDevEnvironment();
-
-/** provider 下拉项：openai / deepseek / 自定义绝对 URL */
-type ProviderChoice = "openai" | "deepseek" | "custom";
-
-const PROVIDER_LABELS: Record<ProviderChoice, string> = {
-    openai: "OpenAI",
-    deepseek: "DeepSeek",
-    custom: "自定义 Base URL",
-};
-
-/** 将 Option.aiProvider 拆成下拉选择 + 自定义 URL 两个 UI 字段 */
-function splitProvider(provider: Option["aiProvider"]): { choice: ProviderChoice; url: string } {
-    if (provider === "openai" || provider === "deepseek") {
-        return { choice: provider, url: "" };
-    }
-    return { choice: "custom", url: provider };
-}
 
 export default function OptionsApp() {
     const [loaded, setLoaded] = useState(false);
@@ -44,6 +29,12 @@ export default function OptionsApp() {
     // API Key 只保存在当前输入框状态，留空表示保持已存值不变
     const [apiKeyInput, setApiKeyInput] = useState("");
     const [keyConfigured, setKeyConfigured] = useState(false);
+    // 作息时间（[小时, 分钟]）：平时入睡 / 最晚入睡 / 最早起床
+    const [sleepTime, setSleepTime] = useState<[number, number]>([22, 0]);
+    const [latestSleepTime, setLatestSleepTime] = useState<[number, number]>([4, 0]);
+    const [earliestWakeTime, setEarliestWakeTime] = useState<[number, number]>([6, 0]);
+    // 是否已完成初始配置引导：false 时展示引导向导
+    const [onboarded, setOnboarded] = useState(true);
     // 调试模式仅当前会话生效，不持久化
     const [debugMode, setDebugMode] = useState(false);
 
@@ -54,6 +45,10 @@ export default function OptionsApp() {
         setCustomUrl(url);
         setModel(option.categorifyModel);
         setKeyConfigured(option.apiKey !== "");
+        setSleepTime(option.sleepTime);
+        setLatestSleepTime(option.latestSleepTime);
+        setEarliestWakeTime(option.earliestWakeTime);
+        setOnboarded(option.onboarded);
         setLoaded(true);
     }, []);
 
@@ -73,15 +68,14 @@ export default function OptionsApp() {
         );
     }
 
+    // 首次启动（未完成引导）：先走初始配置向导，完成后回到常规设置页
+    if (!onboarded) {
+        return <Onboarding onDone={() => void refresh()} />;
+    }
+
     /** 由 UI 字段还原 Option.aiProvider；自定义 URL 非法时返回 null */
-    const resolveProvider = (): Option["aiProvider"] | null => {
-        if (providerChoice !== "custom") return providerChoice;
-        const url = customUrl.trim();
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url as Option["aiProvider"];
-        }
-        return null;
-    };
+    const resolveProvider = (): Option["aiProvider"] | null =>
+        joinProvider(providerChoice, customUrl);
 
     const saveAiSettings = async (clearApiKey = false): Promise<void> => {
         const provider = resolveProvider();
@@ -104,6 +98,26 @@ export default function OptionsApp() {
                 tone: "success",
                 message: clearApiKey ? "API Key 已移除。" : "AI 设置已保存。",
             });
+            await refresh();
+        } catch (e: unknown) {
+            setNotice({ tone: "error", message: (e as Error).message });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const saveRoutine = async (): Promise<void> => {
+        setBusy(true);
+        try {
+            // 读-改-写：保留 Option 中 AI 等 UI 未覆盖的字段
+            const current = await loadOption();
+            await saveOption({
+                ...current,
+                sleepTime,
+                latestSleepTime,
+                earliestWakeTime,
+            });
+            setNotice({ tone: "success", message: "作息时间已保存。" });
             await refresh();
         } catch (e: unknown) {
             setNotice({ tone: "error", message: (e as Error).message });
@@ -152,6 +166,7 @@ export default function OptionsApp() {
 
             <nav className="section-nav" aria-label="设置章节">
                 <a href="#ai">AI</a>
+                <a href="#routine">作息</a>
                 <a href="#data">数据</a>
                 {DEBUG_AVAILABLE ? <a href="#debug">调试</a> : null}
             </nav>
@@ -238,6 +253,43 @@ export default function OptionsApp() {
                                 移除 Key
                             </button>
                         ) : null}
+                    </div>
+                </Card>
+            </div>
+
+            <div id="routine">
+                <Card
+                    eyebrow="Routine"
+                    title="作息时间"
+                    actions={<Clock size={21} aria-hidden="true" />}
+                >
+                    <p className="supporting-copy">
+                        用于识别跨夜休息：启动时若上次活动在“最晚入睡”之前、当前时间在
+                        “最早起床”之后，则认为你已休息并记录入睡/起床时刻。
+                    </p>
+                    <div className="field-grid">
+                        <TimeField label="平时入睡" value={sleepTime} onChange={setSleepTime} />
+                        <TimeField
+                            label="最晚入睡"
+                            value={latestSleepTime}
+                            onChange={setLatestSleepTime}
+                        />
+                        <TimeField
+                            label="最早起床"
+                            value={earliestWakeTime}
+                            onChange={setEarliestWakeTime}
+                        />
+                    </div>
+                    <div className="button-row">
+                        <button
+                            className="button primary"
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void saveRoutine()}
+                        >
+                            <Clock size={17} aria-hidden="true" />
+                            保存作息时间
+                        </button>
                     </div>
                 </Card>
             </div>
