@@ -5,6 +5,8 @@ import type { TabChanged } from '../models/events/TabChanged'
 import type { TabActivated } from '../models/events/TabActivated'
 import { queue } from './EventQueue'
 import { tabEventBuffer } from './engine/TabEventBuffer'
+import { eventLog } from './EventLog'
+import { domainTimeTracker } from './DomainTimeTracker'
 
 const tabUrls = new Map<number, string>()
 
@@ -42,24 +44,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
     const old_url = tabUrls.get(tabId) ?? ''
     tabUrls.set(tabId, changeInfo.url)
-    queue.push(
-        createEvent<TabChanged>({
-            type: 'tab_changed',
-            tabId,
-            url: tab.url ?? changeInfo.url,
-            old_url,
-            new_url: changeInfo.url,
-        }),
-    )
+    const event = createEvent<TabChanged>({
+        type: 'tab_changed',
+        tabId,
+        url: tab.url ?? changeInfo.url,
+        old_url,
+        new_url: changeInfo.url,
+    })
+    queue.push(event)
+    eventLog.append(event)
+    domainTimeTracker.onActivity(event.url, event.timestamp)
 })
 
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
-    queue.push(
-        createEvent<TabActivated>({
-            type: 'tab_activated',
-            tabId,
-            windowId,
-            url: tabUrls.get(tabId) ?? '',
-        }),
-    )
+    const event = createEvent<TabActivated>({
+        type: 'tab_activated',
+        tabId,
+        windowId,
+        url: tabUrls.get(tabId) ?? '',
+    })
+    queue.push(event)
+    eventLog.append(event)
+    domainTimeTracker.onActivity(event.url, event.timestamp)
 })

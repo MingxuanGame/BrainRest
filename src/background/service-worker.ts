@@ -9,10 +9,14 @@ import { dataQualityGate } from './engine/DataQualityGate'
 import { personalCalibration } from './engine/PersonalCalibration'
 import { briHistoryBuffer } from './engine/BRIHistoryBuffer'
 import { triggerEngine } from './engine/TriggerEngine'
+import { eventLog } from './EventLog'
+import { applyEventToTracker, domainTimeTracker } from './DomainTimeTracker'
 import { calcuateMouseAnthropy, calculateEyeHandDelay } from './helper/MouseTrackAnalyzer'
 import { calculateEventFrequency } from './helper/EventFrequencyAnalyzer'
 import { calculateDeleteKeyRatio } from './helper/KeyboardAnalyzer'
 import { getCategory } from '../services/CategoryService'
+import { eventDB } from '../services/EventDataBaseManager'
+import { timeDataStore, toDayKey } from '../services/TimeDataStore'
 import {
     type CategorizeResponse,
     type DebugStateResponse,
@@ -26,6 +30,56 @@ import type { PageComplexitySnapshot } from './engine/types'
 
 // 启动认知负荷引擎（纯计算，结果通过 engine.getLastResult() 查询）
 engine.start()
+
+/* --- 持久化层：崩溃恢复 + 周期性 checkpoint --- */
+
+const PERSIST_ALARM_NAME = 'brainrest-persist-tick'
+
+/**
+ * SW 启动恢复：从 TimeDataStore 载入今日状态，重放 checkpoint 之后的
+ * 未处理事件补齐缺口，随后落盘并收敛 WAL。
+ */
+async function recoverPersistence(): Promise<void> {
+    const now = Date.now()
+    await domainTimeTracker.init(now)
+
+    const today = await timeDataStore.getDay(toDayKey(now))
+    const checkpointAt = today?.checkpointAt ?? 0
+
+    const unprocessed = await eventDB.getUnprocessed()
+    const replay = unprocessed
+        .filter((e) => e.timestamp > checkpointAt)
+        .sort((a, b) => a.timestamp - b.timestamp)
+    for (const event of replay) {
+        applyEventToTracker(event)
+    }
+
+    await domainTimeTracker.checkpoint(now)
+    await eventDB.markProcessedBefore(now)
+    await timeDataStore.prune()
+}
+
+/** 周期性 checkpoint：刷 WAL、落盘时长快照、收敛已处理事件 */
+async function persistTick(): Promise<void> {
+    const now = Date.now()
+    await eventLog.flush()
+    await domainTimeTracker.checkpoint(now)
+    await eventDB.markProcessedBefore(now)
+}
+
+void recoverPersistence()
+
+void chrome.alarms.get(PERSIST_ALARM_NAME).then((alarm) => {
+    if (!alarm) {
+        void chrome.alarms.create(PERSIST_ALARM_NAME, { periodInMinutes: 0.5 })
+    }
+})
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === PERSIST_ALARM_NAME) {
+        void persistTick()
+    }
+})
 
 /* --- 调试统计（供 popup Debug 页查询，不参与业务计算） --- */
 const swStartedAt = Date.now()
@@ -75,6 +129,10 @@ chrome.runtime.onConnect.addListener((port) => {
 
         // 转发给引擎（活跃度追踪、数据质量门控等）
         engine.receiveEvent(message)
+
+        // 写前日志（WAL 崩溃备份）+ 域名会话时长追踪
+        eventLog.append(message)
+        domainTimeTracker.onActivity(message.url, message.timestamp)
     })
 })
 

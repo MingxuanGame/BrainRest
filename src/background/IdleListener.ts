@@ -1,4 +1,5 @@
 import { engine } from './engine/CognitiveLoadEngine'
+import { domainTimeTracker } from './DomainTimeTracker'
 
 /**
  * 通过 chrome.idle 监听系统锁屏 / 息屏状态，驱动休息权重 R 的"主动锁屏"场景。
@@ -10,6 +11,13 @@ chrome.idle.setDetectionInterval(60)
 
 chrome.idle.onStateChanged.addListener((state) => {
     engine.setDeviceLocked(state === 'locked')
+
+    // 域名会话时长追踪：idle / 锁屏暂停计时，active 恢复
+    if (state === 'active') {
+        domainTimeTracker.resume()
+    } else {
+        domainTimeTracker.pause()
+    }
 })
 
 // 启动时对齐一次当前状态
