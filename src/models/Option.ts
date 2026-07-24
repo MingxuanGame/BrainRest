@@ -8,4 +8,6 @@ export interface Option {
     latestSleepTime: [number, number]; // [hour, minute], 24-hour format
     earliestWakeTime: [number, number]; // [hour, minute], 24-hour format
     sleepTime: [number, number]; // [hour, minute], 24-hour format
+
+    onboarded: boolean; // 是否已完成初始配置引导
 }

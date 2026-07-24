@@ -13,6 +13,7 @@ const DEFAULT_OPTION: Option = {
     latestSleepTime: [4, 0],
     earliestWakeTime: [6, 0],
     sleepTime: [22, 0],
+    onboarded: false,
 };
 
 type RawProvider = "openai" | "deepseek" | AbsoluteUrl;
@@ -53,6 +54,10 @@ export async function loadOption(): Promise<Option> {
                 ? obj.categorifyModel
                 : DEFAULT_OPTION.categorifyModel,
         apiKey: typeof obj.apiKey === "string" ? obj.apiKey : DEFAULT_OPTION.apiKey,
+        latestSleepTime: normalizeTime(obj.latestSleepTime, DEFAULT_OPTION.latestSleepTime),
+        earliestWakeTime: normalizeTime(obj.earliestWakeTime, DEFAULT_OPTION.earliestWakeTime),
+        sleepTime: normalizeTime(obj.sleepTime, DEFAULT_OPTION.sleepTime),
+        onboarded: obj.onboarded === true,
     };
 }
 
@@ -86,4 +91,23 @@ function normalizeProvider(value: unknown): RawProvider {
         return value as AbsoluteUrl;
     }
     return DEFAULT_OPTION.aiProvider;
+}
+
+/** 规范化 [小时, 分钟] 时刻：非法（缺失/越界/类型错误）时回退到默认值 */
+function normalizeTime(value: unknown, fallback: [number, number]): [number, number] {
+    if (
+        Array.isArray(value) &&
+        value.length === 2 &&
+        typeof value[0] === "number" &&
+        typeof value[1] === "number" &&
+        Number.isInteger(value[0]) &&
+        Number.isInteger(value[1]) &&
+        value[0] >= 0 &&
+        value[0] <= 23 &&
+        value[1] >= 0 &&
+        value[1] <= 59
+    ) {
+        return [value[0], value[1]];
+    }
+    return [...fallback];
 }
