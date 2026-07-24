@@ -2,16 +2,16 @@ schema_version: 1
 module_path: ""
 title: Chrome 扩展工程根与构建配置
 scope:
-    - README.md
-    - .gitignore
-    - eslint.config.js
-    - index.html
-    - package.json
-    - package-lock.json
-    - tsconfig.app.json
-    - tsconfig.json
-    - tsconfig.node.json
-    - vite.config.ts
-source_files: []
-depends_on: []
-related_to: []
+  - README.md
+  - .gitignore
+  - eslint.config.js
+  - index.html
+  - package.json
+  - package-lock.json
+  - tsconfig.app.json
+  - tsconfig.json
+  - tsconfig.node.json
+  - vite.config.ts
+source_files: [ ]
+depends_on: [ ]
+related_to: [ ]
