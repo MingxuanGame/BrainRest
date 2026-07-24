@@ -1,41 +1,34 @@
-import { useCallback, useState } from 'react'
-import { TEST_GROUPS, type SubTest, type TestGroup } from './tests'
-import RestSuggestionPanel from './RestSuggestionPanel'
+import { useCallback, useState } from "react";
+import { TEST_GROUPS, type SubTest, type TestGroup } from "./tests";
+import RestSuggestionPanel from "./RestSuggestionPanel";
 
 /* ------------------------------------------------------------------ */
 /* 状态模型                                                            */
 /* ------------------------------------------------------------------ */
 
-type TestStatus = 'idle' | 'running' | 'pass' | 'fail'
+type TestStatus = "idle" | "running" | "pass" | "fail";
 
 interface TestState {
-    status: TestStatus
-    detail: string
+    status: TestStatus;
+    detail: string;
 }
 
-const IDLE_STATE: TestState = { status: 'idle', detail: '' }
+const IDLE_STATE: TestState = { status: "idle", detail: "" };
 
 const STATUS_ICON: Record<TestStatus, string> = {
-    idle: '·',
-    running: '…',
-    pass: '✔',
-    fail: '✘',
-}
-
-const STATUS_COLOR: Record<TestStatus, string> = {
-    idle: '#888',
-    running: '#b8860b',
-    pass: '#1a7f37',
-    fail: '#c0392b',
-}
+    idle: "·",
+    running: "…",
+    pass: "✔",
+    fail: "✘",
+};
 
 /** 汇总一个分组内所有子测试的状态 */
 function summarizeGroup(group: TestGroup, results: Record<string, TestState>): TestStatus {
-    const states = group.subTests.map((t) => results[t.id]?.status ?? 'idle')
-    if (states.some((s) => s === 'running')) return 'running'
-    if (states.some((s) => s === 'fail')) return 'fail'
-    if (states.every((s) => s === 'pass')) return 'pass'
-    return 'idle'
+    const states = group.subTests.map((t) => results[t.id]?.status ?? "idle");
+    if (states.some((s) => s === "running")) return "running";
+    if (states.some((s) => s === "fail")) return "fail";
+    if (states.every((s) => s === "pass")) return "pass";
+    return "idle";
 }
 
 /* ------------------------------------------------------------------ */
@@ -48,40 +41,34 @@ function SubTestRow({
     disabled,
     onRun,
 }: {
-    test: SubTest
-    state: TestState
-    disabled: boolean
-    onRun: () => void
+    test: SubTest;
+    state: TestState;
+    disabled: boolean;
+    onRun: () => void;
 }) {
     return (
-        <div style={{ borderTop: '1px solid #eee', padding: '6px 0 6px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: STATUS_COLOR[state.status], width: 14 }}>
+        <div className="debug-sub-row">
+            <div>
+                <span className={`debug-status is-${state.status}`}>
                     {STATUS_ICON[state.status]}
                 </span>
                 <span>{test.name}</span>
                 <button
+                    className="button compact"
                     onClick={onRun}
-                    disabled={disabled || state.status === 'running'}
-                    style={{ marginLeft: 'auto' }}
+                    disabled={disabled || state.status === "running"}
+                    style={{ marginLeft: "auto" }}
                 >
                     测试
                 </button>
             </div>
             {state.detail && (
-                <pre
-                    style={{
-                        margin: '4px 0 0 20px',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all',
-                        color: state.status === 'fail' ? STATUS_COLOR.fail : '#444',
-                    }}
-                >
+                <pre className={`debug-pre${state.status === "fail" ? " is-fail" : ""}`}>
                     {state.detail}
                 </pre>
             )}
         </div>
-    )
+    );
 }
 
 /* ------------------------------------------------------------------ */
@@ -97,38 +84,34 @@ function GroupCard({
     onRunSub,
     onRunGroup,
 }: {
-    group: TestGroup
-    results: Record<string, TestState>
-    expanded: boolean
-    busy: boolean
-    onToggle: () => void
-    onRunSub: (test: SubTest) => void
-    onRunGroup: () => void
+    group: TestGroup;
+    results: Record<string, TestState>;
+    expanded: boolean;
+    busy: boolean;
+    onToggle: () => void;
+    onRunSub: (test: SubTest) => void;
+    onRunGroup: () => void;
 }) {
-    const groupStatus = summarizeGroup(group, results)
-    const passCount = group.subTests.filter((t) => results[t.id]?.status === 'pass').length
+    const groupStatus = summarizeGroup(group, results);
+    const passCount = group.subTests.filter((t) => results[t.id]?.status === "pass").length;
 
     return (
-        <div style={{ border: '1px solid #ddd', borderRadius: 4, padding: 8, marginBottom: 6 }}>
-            <div
-                onClick={onToggle}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-            >
-                <span style={{ width: 12, color: '#666' }}>{expanded ? '▼' : '▶'}</span>
-                <span style={{ color: STATUS_COLOR[groupStatus], width: 14 }}>
-                    {STATUS_ICON[groupStatus]}
-                </span>
-                <span style={{ fontWeight: 600 }}>{group.name}</span>
-                <span style={{ color: '#999' }}>[{group.scope}]</span>
-                <span style={{ color: '#999', marginLeft: 'auto' }}>
+        <div className="debug-group">
+            <div className="debug-group-header" onClick={onToggle}>
+                <span className="debug-caret">{expanded ? "▼" : "▶"}</span>
+                <span className={`debug-status is-${groupStatus}`}>{STATUS_ICON[groupStatus]}</span>
+                <strong>{group.name}</strong>
+                <span className="debug-scope">[{group.scope}]</span>
+                <span className="debug-count">
                     {passCount}/{group.subTests.length}
                 </span>
                 <button
+                    className="button compact"
                     onClick={(e) => {
-                        e.stopPropagation() // 不触发展开/收起
-                        onRunGroup()
+                        e.stopPropagation(); // 不触发展开/收起
+                        onRunGroup();
                     }}
-                    disabled={busy || groupStatus === 'running'}
+                    disabled={busy || groupStatus === "running"}
                 >
                     测试组
                 </button>
@@ -148,7 +131,7 @@ function GroupCard({
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 /* ------------------------------------------------------------------ */
@@ -156,56 +139,60 @@ function GroupCard({
 /* ------------------------------------------------------------------ */
 
 export default function DebugPage({ onBack }: { onBack: () => void }) {
-    const [results, setResults] = useState<Record<string, TestState>>({})
-    const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-    const [runningAll, setRunningAll] = useState(false)
+    const [results, setResults] = useState<Record<string, TestState>>({});
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const [runningAll, setRunningAll] = useState(false);
 
     const toggleGroup = useCallback((groupId: string) => {
-        setExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
-    }, [])
+        setExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+    }, []);
 
     const runSub = useCallback(async (test: SubTest) => {
-        setResults((prev) => ({ ...prev, [test.id]: { status: 'running', detail: '' } }))
+        setResults((prev) => ({ ...prev, [test.id]: { status: "running", detail: "" } }));
         try {
-            const detail = await test.run()
-            setResults((prev) => ({ ...prev, [test.id]: { status: 'pass', detail } }))
+            const detail = await test.run();
+            setResults((prev) => ({ ...prev, [test.id]: { status: "pass", detail } }));
         } catch (e: unknown) {
             setResults((prev) => ({
                 ...prev,
-                [test.id]: { status: 'fail', detail: (e as Error).message },
-            }))
+                [test.id]: { status: "fail", detail: (e as Error).message },
+            }));
         }
-    }, [])
+    }, []);
 
     const runGroup = useCallback(
         async (group: TestGroup) => {
-            setExpanded((prev) => ({ ...prev, [group.id]: true }))
+            setExpanded((prev) => ({ ...prev, [group.id]: true }));
             for (const test of group.subTests) {
-                await runSub(test)
+                await runSub(test);
             }
         },
         [runSub],
-    )
+    );
 
     const runAll = useCallback(async () => {
-        setRunningAll(true)
+        setRunningAll(true);
         for (const group of TEST_GROUPS) {
-            await runGroup(group)
+            await runGroup(group);
         }
-        setRunningAll(false)
-    }, [runGroup])
+        setRunningAll(false);
+    }, [runGroup]);
 
     return (
-        <div style={{ width: 440, maxHeight: 580, overflowY: 'auto', padding: 12, fontSize: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <button onClick={onBack}>← 返回</button>
-                <h2 style={{ margin: 0, fontSize: 16 }}>Debug</h2>
+        <div className="app-shell debug-shell">
+            <div className="header-row">
+                <div className="button-row">
+                    <button className="button compact" onClick={onBack}>
+                        ← 返回
+                    </button>
+                    <h2 style={{ margin: 0, fontSize: 16 }}>Debug</h2>
+                </div>
                 <button
+                    className="button compact primary"
                     onClick={() => void runAll()}
                     disabled={runningAll}
-                    style={{ marginLeft: 'auto' }}
                 >
-                    {runningAll ? '运行中…' : '运行全部'}
+                    {runningAll ? "运行中…" : "运行全部"}
                 </button>
             </div>
 
@@ -224,5 +211,5 @@ export default function DebugPage({ onBack }: { onBack: () => void }) {
 
             <RestSuggestionPanel />
         </div>
-    )
+    );
 }
