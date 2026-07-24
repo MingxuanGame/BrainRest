@@ -17,13 +17,14 @@ import {
 } from '../../background/DomainTimeTracker'
 import { createEvent } from '../../models/events/Event'
 import type { Event } from '../../models/events/Event'
-import { suggestions } from '../../data/suggestions'
+import { loadTypeProfiles } from '../../data/load-types'
+import { categoryLoadType } from '../../data/category-load-type'
 import { triggerBaseline } from '../../data/trigger-baseline'
 import { fatigueTitle } from '../../data/fatigue-title'
 import { TYPE_BASELINE, type TriggerPath } from '../../background/engine/types'
 import type { UrlCategory } from '../../models/types'
 import type { BRIResult } from '../../background/engine/types'
-import { buildRestSuggestion } from '../../background/engine/RestSuggestion'
+import { buildRestSuggestion, pickActivities } from '../../background/engine/RestSuggestion'
 
 /* ------------------------------------------------------------------ */
 /* 类型定义                                                            */
@@ -942,42 +943,67 @@ const restDataGroup: TestGroup = {
     scope: 'src/data',
     subTests: [
         {
-            id: 'rest-suggestions-coverage',
-            name: 'suggestions 覆盖全部 UrlCategory',
+            id: 'rest-mapping-coverage',
+            name: 'categoryLoadType 覆盖全部 UrlCategory',
             run: async () => {
                 const expected = Object.keys(TYPE_BASELINE).sort()
-                const actual = Object.keys(suggestions).sort()
+                const actual = Object.keys(categoryLoadType).sort()
                 const missing = expected.filter((k) => !actual.includes(k))
                 const extra = actual.filter((k) => !expected.includes(k))
                 if (missing.length > 0 || extra.length > 0) {
                     throw new Error(`缺失: [${missing.join(', ')}]，多余: [${extra.join(', ')}]`)
                 }
-                return `已覆盖全部 ${expected.length} 类页面类型`
-            },
-        },
-        {
-            id: 'rest-suggestions-baseline',
-            name: 'suggestions.baseline 与 TYPE_BASELINE 一致',
-            run: async () => {
-                for (const [cat, s] of Object.entries(suggestions)) {
-                    const expected = TYPE_BASELINE[cat as UrlCategory]
-                    if (s.baseline !== expected) {
-                        throw new Error(`${cat}: baseline=${s.baseline}，应为 ${expected}`)
+                for (const [cat, lt] of Object.entries(categoryLoadType)) {
+                    if (!loadTypeProfiles[lt]) {
+                        throw new Error(`${cat} 映射到不存在的负荷类型 ${lt}`)
                     }
                 }
-                return '全部页面类型 baseline 与引擎 TYPE_BASELINE 对齐'
+                return `已覆盖全部 ${expected.length} 类页面类型，映射目标均存在`
             },
         },
         {
-            id: 'rest-suggestions-fields',
-            name: 'suggestions 字段有效性',
+            id: 'rest-profiles-fields',
+            name: 'loadTypeProfiles 字段有效性',
             run: async () => {
-                for (const [cat, s] of Object.entries(suggestions)) {
-                    if (s.durationMin <= 0) throw new Error(`${cat}: durationMin 非正`)
-                    if (s.activities.length === 0) throw new Error(`${cat}: activities 为空`)
-                    if (s.message.trim() === '') throw new Error(`${cat}: message 为空`)
+                for (const [lt, p] of Object.entries(loadTypeProfiles)) {
+                    if (p.durationMin <= 0) throw new Error(`${lt}: durationMin 非正`)
+                    if (p.activities.length < 3) throw new Error(`${lt}: 活动池不足 3 个`)
+                    if (p.message.trim() === '') throw new Error(`${lt}: message 为空`)
+                    if (p.mainLoads.length === 0) throw new Error(`${lt}: mainLoads 为空`)
+                    for (const a of p.activities) {
+                        if (a.name.trim() === '') throw new Error(`${lt}: 存在空活动名`)
+                    }
                 }
-                return '全部条目 durationMin/activities/message 有效'
+                const count = Object.keys(loadTypeProfiles).length
+                return `全部 ${count} 类负荷档案有效，活动池均 ≥3 个`
+            },
+        },
+        {
+            id: 'rest-pick-activities',
+            name: 'pickActivities 抽取 3 个不重复且 ⭐ 必含',
+            run: async () => {
+                for (const [lt, p] of Object.entries(loadTypeProfiles)) {
+                    const picked = pickActivities(p.activities, 3)
+                    if (picked.length !== 3) {
+                        throw new Error(`${lt}: 抽取数量 ${picked.length}，应为 3`)
+                    }
+                    const names = picked.map((a) => a.name)
+                    if (new Set(names).size !== 3) {
+                        throw new Error(`${lt}: 抽取结果重复 [${names.join(', ')}]`)
+                    }
+                    for (const a of picked) {
+                        if (!p.activities.includes(a)) {
+                            throw new Error(`${lt}: 「${a.name}」不在活动池中`)
+                        }
+                    }
+                    const starred = p.activities.filter((a) => a.star)
+                    for (const s of starred.slice(0, 3)) {
+                        if (!picked.includes(s)) {
+                            throw new Error(`${lt}: ⭐ 活动「${s.name}」未被抽中`)
+                        }
+                    }
+                }
+                return '全部负荷类型抽取 3 个、不重复、⭐ 必含'
             },
         },
         {
@@ -1024,23 +1050,33 @@ const restDataGroup: TestGroup = {
         },
         {
             id: 'rest-build-page',
-            name: 'buildRestSuggestion 命中页面类型优先取细化建议',
+            name: 'buildRestSuggestion 命中负荷类型走活动池',
             run: async () => {
                 const out = buildRestSuggestion(mockBriResult('A', 'deep_work_productivity'))
                 if (!out) throw new Error('应返回建议对象，实际为 null')
-                const page = suggestions.deep_work_productivity
+                const profile = loadTypeProfiles[categoryLoadType.deep_work_productivity]
                 if (out.title !== fatigueTitle.cognitive) {
                     throw new Error(`title 应为「${fatigueTitle.cognitive}」，实际「${out.title}」`)
                 }
-                if (out.body !== page.message) {
-                    throw new Error('body 应取页面类型的 message')
+                if (out.body !== profile.message) {
+                    throw new Error('body 应取负荷类型的 message')
                 }
-                if (out.duration !== `${page.durationMin} 分钟`) {
+                if (out.duration !== `${profile.durationMin} 分钟`) {
                     throw new Error(
-                        `duration 应为「${page.durationMin} 分钟」，实际「${out.duration}」`,
+                        `duration 应为「${profile.durationMin} 分钟」，实际「${out.duration}」`,
                     )
                 }
-                return `title=「${out.title}」duration=「${out.duration}」`
+                const lines = out.actions.split('\n')
+                if (lines.length !== 3) {
+                    throw new Error(`actions 应为 3 行，实际 ${lines.length} 行`)
+                }
+                const poolNames = profile.activities.map((a) => a.name)
+                for (const line of lines) {
+                    if (!poolNames.some((n) => line.includes(n))) {
+                        throw new Error(`actions 行「${line}」不来自活动池`)
+                    }
+                }
+                return `title=「${out.title}」duration=「${out.duration}」，3 个活动均来自池`
             },
         },
         {
