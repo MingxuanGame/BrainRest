@@ -11,8 +11,12 @@ import {
     type UiStatus,
 } from "../ui/bridge";
 import { buildQuickBreakSuggestion } from "../ui/quick-break";
+import { isDevEnvironment } from "../utils/env";
 import type { RestSuggestion } from "../models/RestSuggestion";
 import type { BRIResult } from "../background/engine/types";
+
+/** 是否展示调试页入口：生产环境（商店安装）整体隐藏，模块加载时判定一次 */
+const DEBUG_AVAILABLE = isDevEnvironment();
 
 const LEVEL_COPY: Record<UiLoadLevel, string> = {
     low: "低负荷",
@@ -91,7 +95,7 @@ export default function App() {
         };
     }, [page, refresh]);
 
-    if (page === "debug") {
+    if (page === "debug" && DEBUG_AVAILABLE) {
         return <DebugPage onBack={() => setPage("home")} />;
     }
 
@@ -132,15 +136,17 @@ export default function App() {
                     </div>
                 </div>
                 <div className="button-row">
-                    <button
-                        className="icon-button"
-                        type="button"
-                        aria-label="打开调试页"
-                        title="调试"
-                        onClick={() => setPage("debug")}
-                    >
-                        <Bug size={18} />
-                    </button>
+                    {DEBUG_AVAILABLE ? (
+                        <button
+                            className="icon-button"
+                            type="button"
+                            aria-label="打开调试页"
+                            title="调试"
+                            onClick={() => setPage("debug")}
+                        >
+                            <Bug size={18} />
+                        </button>
+                    ) : null}
                     <button
                         className="icon-button"
                         type="button"

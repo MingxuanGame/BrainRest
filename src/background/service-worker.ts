@@ -33,6 +33,7 @@ import type { Event } from "../models/events/Event";
 import type { PageComplexitySnapshot } from "./engine/types";
 import { loadOption } from "../services/OptionStore";
 import { compareTime } from "../utils/time";
+import { isDevEnvironment } from "../utils/env";
 import { routineStore } from "../services/RoutineStore";
 
 // 启动认知负荷引擎（纯计算，结果通过 engine.getLastResult() 查询）
@@ -215,6 +216,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!isDebugInjectMetricsRequest(message)) {
         return false;
     }
+    // 生产环境（商店安装）整体屏蔽调试写入通道
+    if (!isDevEnvironment()) {
+        const response: DebugInjectMetricsResponse = {
+            ok: false,
+            error: "生产环境已禁用调试通道",
+        };
+        sendResponse(response);
+        return false;
+    }
     try {
         const now = Date.now();
 
@@ -257,6 +267,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 /** 设置页调试模式：手动执行一次认知引擎计算，返回本次 tick 后的最新输出 */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!isDebugEngineTickRequest(message)) {
+        return false;
+    }
+    // 生产环境（商店安装）整体屏蔽调试写入通道
+    if (!isDevEnvironment()) {
+        const response: DebugEngineTickResponse = {
+            ok: false,
+            error: "生产环境已禁用调试通道",
+            engineResult: null,
+        };
+        sendResponse(response);
         return false;
     }
     void (async () => {

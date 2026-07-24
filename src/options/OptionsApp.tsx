@@ -8,7 +8,11 @@ import { routineStore } from "../services/RoutineStore";
 import type { Option } from "../models/Option";
 import { Card, InlineNotice, Toggle } from "../ui/components";
 import { PRODUCT_BOUNDARY_COPY } from "../ui/bridge";
+import { isDevEnvironment } from "../utils/env";
 import DebugModePanel from "./DebugModePanel";
+
+/** 是否展示调试/开发者能力：生产环境（商店安装）整体隐藏，模块加载时判定一次 */
+const DEBUG_AVAILABLE = isDevEnvironment();
 
 /** provider 下拉项：openai / deepseek / 自定义绝对 URL */
 type ProviderChoice = "openai" | "deepseek" | "custom";
@@ -149,7 +153,7 @@ export default function OptionsApp() {
             <nav className="section-nav" aria-label="设置章节">
                 <a href="#ai">AI</a>
                 <a href="#data">数据</a>
-                <a href="#debug">调试</a>
+                {DEBUG_AVAILABLE ? <a href="#debug">调试</a> : null}
             </nav>
 
             {notice ? <InlineNotice tone={notice.tone}>{notice.message}</InlineNotice> : null}
@@ -260,17 +264,19 @@ export default function OptionsApp() {
                 </Card>
             </div>
 
-            <div id="debug">
-                <Card eyebrow="Debug" title="开发者选项">
-                    <Toggle
-                        checked={debugMode}
-                        onChange={setDebugMode}
-                        label="调试模式"
-                        description="注入监测数据、手动触发 AI 分类与引擎计算、查看实时引擎数据；仅当前会话生效"
-                    />
-                </Card>
-                {debugMode ? <DebugModePanel /> : null}
-            </div>
+            {DEBUG_AVAILABLE ? (
+                <div id="debug">
+                    <Card eyebrow="Debug" title="开发者选项">
+                        <Toggle
+                            checked={debugMode}
+                            onChange={setDebugMode}
+                            label="调试模式"
+                            description="注入监测数据、手动触发 AI 分类与引擎计算、查看实时引擎数据；仅开发环境可用，仅当前会话生效"
+                        />
+                    </Card>
+                    {debugMode ? <DebugModePanel /> : null}
+                </div>
+            ) : null}
         </main>
     );
 }

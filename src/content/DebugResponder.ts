@@ -8,6 +8,7 @@ import {
     isDebugForceCategorizeRequest,
 } from "../messages";
 import type { PageComplexitySnapshot } from "../background/engine/types";
+import { isDevEnvironment } from "../utils/env";
 
 /**
  * 响应 popup Debug 页经 chrome.tabs.sendMessage 发来的调试 ping：
@@ -16,6 +17,10 @@ import type { PageComplexitySnapshot } from "../background/engine/types";
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!isDebugContentPingRequest(message)) {
+        return false;
+    }
+    // 生产环境（商店安装）整体屏蔽调试通道：不应答，视同未注入
+    if (!isDevEnvironment()) {
         return false;
     }
 
@@ -43,6 +48,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!isDebugForceCategorizeRequest(message)) {
+        return false;
+    }
+    // 生产环境（商店安装）整体屏蔽调试通道：不应答，视同未注入
+    if (!isDevEnvironment()) {
         return false;
     }
     void (async () => {
