@@ -1,5 +1,5 @@
-import { sleepTimeStore } from "../../services/SleepTimeStore";
-import type { SleepTimeRecord } from "../../services/SleepTimeStore";
+import { routineStore } from "../../services/RoutineStore";
+import type { RoutineRecord } from "../../services/RoutineStore";
 import { MINUTES_PER_DAY, minutesToTime } from "../../utils/time";
 
 class SleepTimeAnalyser {
@@ -24,7 +24,7 @@ class SleepTimeAnalyser {
         guideMode: boolean,
         frontMinutes: number,
     ): Promise<[number, number] | null> {
-        const recentSleepTimes = await sleepTimeStore.getRecent(14);
+        const recentSleepTimes = await routineStore.getRecent(14);
         void guideMode;
         void frontMinutes;
         const avgMinutes = this.averageSleepTime(recentSleepTimes);
@@ -45,11 +45,11 @@ class SleepTimeAnalyser {
      * 入睡时刻是环形数据（跨午夜），故采用环形均值；用 MAD 剔除极端值；
      * 若剔除后剩余数据过少或离散度过大，则认为无法平均，返回 null。
      */
-    private averageSleepTime(records: SleepTimeRecord[]): number | null {
+    private averageSleepTime(records: RoutineRecord[]): number | null {
         // 数据量过少无法稳定平均
         if (records.length < 3) return null;
 
-        const minutes = records.map((r) => r.hour * 60 + r.minute);
+        const minutes = records.map((r) => r.sleepHour * 60 + r.sleepMinute);
 
         // 环形均值（处理跨午夜情况，如 23:00 与 01:00）
         const meanMinutes = this.circularMean(minutes);
