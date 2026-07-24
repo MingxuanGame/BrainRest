@@ -298,6 +298,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true; // 保持 sendResponse 通道开放（异步响应）
 });
 
+chrome.runtime.onInstalled.addListener((details) => {
+    // 全新安装：打开设置页引导用户完成初始配置
+    if (details.reason === "install") {
+        void chrome.runtime.openOptionsPage();
+    }
+});
+
 chrome.runtime.onStartup.addListener(async () => {
     const lastEvent = await eventDB.getRecentEvent();
     if (!lastEvent) return;
