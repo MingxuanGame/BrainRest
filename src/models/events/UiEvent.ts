@@ -1,4 +1,4 @@
-import type {Event} from './Event'
+import type { Event } from './Event'
 
 /** Base interface for all captured UI interaction events */
 export interface UiEvent extends Event {

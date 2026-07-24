@@ -1,4 +1,4 @@
-import type {UiEvent} from './UiEvent'
+import type { UiEvent } from './UiEvent'
 
 /** Scroll event data */
 export interface UiScrollEvent extends UiEvent {

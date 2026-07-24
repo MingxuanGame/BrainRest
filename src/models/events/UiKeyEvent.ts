@@ -1,4 +1,4 @@
-import type {UiEvent} from './UiEvent'
+import type { UiEvent } from './UiEvent'
 
 /** Keyboard key press event data */
 export interface UiKeyEvent extends UiEvent {

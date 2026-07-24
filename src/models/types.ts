@@ -1,4 +1,4 @@
-export type AbsoluteUrl = `http://${string}` | `https://${string}`;
+export type AbsoluteUrl = `http://${string}` | `https://${string}`
 
 export type UrlCategory =
     | 'short_video_entertainment'
@@ -11,4 +11,4 @@ export type UrlCategory =
     | 'hybrid_learning_cognition'
     | 'low_load_utility'
     | 'shopping_reward_social'
-    | 'audio_low_visual';
+    | 'audio_low_visual'

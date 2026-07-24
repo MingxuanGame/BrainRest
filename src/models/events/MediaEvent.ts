@@ -1,4 +1,4 @@
-import type {Event} from './Event'
+import type { Event } from './Event'
 
 /** Fired when a media element is played or paused */
 export interface MediaEvent extends Event {

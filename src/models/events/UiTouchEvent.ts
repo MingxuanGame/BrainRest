@@ -1,4 +1,4 @@
-import type {UiEvent} from './UiEvent'
+import type { UiEvent } from './UiEvent'
 
 /** Touch interaction event data */
 export interface UiTouchEvent extends UiEvent {

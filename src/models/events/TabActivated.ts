@@ -1,4 +1,4 @@
-import type {TabEvent} from './TabEvent'
+import type { TabEvent } from './TabEvent'
 
 /** Fired when the user switches the active tab (chrome.tabs.onActivated) */
 export interface TabActivated extends TabEvent {

@@ -1,7 +1,7 @@
-import {getEventStats} from "./EventChannel";
-import {collectComplexitySnapshot} from "./PageComplexityAnalyzer";
-import {type DebugContentPingResponse, isDebugContentPingRequest} from "../messages";
-import type {PageComplexitySnapshot} from "../background/engine/types";
+import { getEventStats } from './EventChannel'
+import { collectComplexitySnapshot } from './PageComplexityAnalyzer'
+import { type DebugContentPingResponse, isDebugContentPingRequest } from '../messages'
+import type { PageComplexitySnapshot } from '../background/engine/types'
 
 /**
  * 响应 popup Debug 页经 chrome.tabs.sendMessage 发来的调试 ping：
@@ -10,12 +10,12 @@ import type {PageComplexitySnapshot} from "../background/engine/types";
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!isDebugContentPingRequest(message)) {
-        return false;
+        return false
     }
 
-    let complexity: PageComplexitySnapshot | null = null;
+    let complexity: PageComplexitySnapshot | null = null
     try {
-        complexity = collectComplexitySnapshot();
+        complexity = collectComplexitySnapshot()
     } catch {
         // 复杂度采集失败不影响 ping 应答
     }
@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         url: window.location.href,
         eventStats: getEventStats(),
         complexity,
-    };
-    sendResponse(response);
-    return false; // 同步应答，无需保持通道
-});
+    }
+    sendResponse(response)
+    return false // 同步应答，无需保持通道
+})

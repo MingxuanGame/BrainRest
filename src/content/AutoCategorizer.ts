@@ -1,11 +1,11 @@
-import type {CategorizeRequest} from "../messages";
+import type { CategorizeRequest } from '../messages'
 
 // 页面加载后 3s 自动分类（等待 UI 稳定再抽取 HTML，避免过早快照降低准召率）
-window.addEventListener("load", () => {
+window.addEventListener('load', () => {
     setTimeout(() => {
-        void autoCategorize();
-    }, 3000);
-});
+        void autoCategorize()
+    }, 3000)
+})
 
 /**
  * content 仅向 background 中转 {url, html}，由 background 调用 getCategory（含本地库回溯与 AI 调用）。
@@ -15,12 +15,12 @@ window.addEventListener("load", () => {
  */
 async function autoCategorize(): Promise<void> {
     const request: CategorizeRequest = {
-        type: "categorize",
+        type: 'categorize',
         url: window.location.href,
         html: document.documentElement.outerHTML,
-    };
+    }
     try {
-        await chrome.runtime.sendMessage(request);
+        await chrome.runtime.sendMessage(request)
     } catch {
         // 中转失败静默忽略，不影响页面正常事件采集
     }

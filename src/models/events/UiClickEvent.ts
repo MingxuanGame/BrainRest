@@ -1,4 +1,4 @@
-import type {UiEvent} from './UiEvent'
+import type { UiEvent } from './UiEvent'
 
 /** Mouse click event data */
 export interface UiClickEvent extends UiEvent {
