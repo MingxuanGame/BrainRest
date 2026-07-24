@@ -1,0 +1,25 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-07-23T16:28:55Z"
+modules:
+    "":
+        dir_name: Chrome 扩展工程根与构建配置
+        title: Chrome 扩展工程根与构建配置
+        scope:
+            - README.md
+            - .gitignore
+            - eslint.config.js
+            - index.html
+            - package.json
+            - package-lock.json
+            - tsconfig.app.json
+            - tsconfig.json
+            - tsconfig.node.json
+            - vite.config.ts
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
