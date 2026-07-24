@@ -3,6 +3,7 @@ import type { UrlCategory } from '../models/types'
 import { client, initClient } from './AI'
 import { urlCategoryDB } from './UrlCategoryDataBaseManager'
 import { loadOption } from './OptionStore'
+import { extractDomain } from '../models/url'
 
 const categorifyPrompt = `
 You are a website URL classifier. You will be given a URL and the HTML content of its corresponding web page. Based on both, determine the category that the URL belongs to.
@@ -96,16 +97,6 @@ export async function categorifyModel(
         throw new Error('Invalid category from AI model.')
     }
     return { domain, category: category as UrlCategory }
-}
-
-/** 从完整 URL 中提取规范化域名（去除协议、www 前缀、端口、路径） */
-function extractDomain(url: string): string | null {
-    try {
-        const hostname = new URL(url).hostname.toLowerCase()
-        return hostname.replace(/^www\./, '')
-    } catch {
-        return null
-    }
 }
 
 async function getCategoryFromDB(

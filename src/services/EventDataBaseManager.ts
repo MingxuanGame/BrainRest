@@ -82,6 +82,24 @@ class EventDataBaseManager {
         await tx.done
     }
 
+    /**
+     * 将 timestamp <= cutoff 的未处理事件批量标记为已处理。
+     * checkpoint 落盘后调用，收敛 getUnprocessed 的规模。
+     */
+    async markProcessedBefore(cutoff: number): Promise<void> {
+        const db = await this.dbPromise
+        const tx = db.transaction(EVENT_STORE, 'readwrite')
+        const range = IDBKeyRange.upperBound(cutoff)
+        let cursor = await tx.store.openCursor(range)
+        while (cursor) {
+            if (cursor.value.processed === 0) {
+                await cursor.update({ ...cursor.value, processed: 1 })
+            }
+            cursor = await cursor.continue()
+        }
+        await tx.done
+    }
+
     /** 清理 24h 之前的旧数据（滚动窗口） */
     async prune(): Promise<void> {
         const db = await this.dbPromise
