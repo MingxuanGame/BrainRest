@@ -56,6 +56,12 @@ export class SessionTracker {
         this.currentSegmentStart = this.isActive() ? Date.now() : null;
     }
 
+    /** 调试专用：直接改写已累积的前台时长（分钟），当前计时段从现在重新开始 */
+    debugSetFrontMinutes(minutes: number): void {
+        this.accumulatedMs = Math.max(minutes, 0) * 60_000;
+        this.currentSegmentStart = this.isActive() ? Date.now() : null;
+    }
+
     /** 判断当前是否应处于计时状态（前台且未锁屏） */
     private isActive(): boolean {
         return this.focused && !this.locked;

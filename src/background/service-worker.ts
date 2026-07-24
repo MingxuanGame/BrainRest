@@ -19,9 +19,13 @@ import { eventDB } from "../services/EventDataBaseManager";
 import { timeDataStore, toDayKey } from "../services/TimeDataStore";
 import {
     type CategorizeResponse,
+    type DebugEngineTickResponse,
+    type DebugInjectMetricsResponse,
     type DebugStateResponse,
     type EngineInternals,
     isCategorizeRequest,
+    isDebugEngineTickRequest,
+    isDebugInjectMetricsRequest,
     isDebugStateRequest,
     type PortEventStats,
 } from "../messages";
@@ -201,6 +205,75 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     };
     sendResponse(response);
     return false; // 同步应答，无需保持通道
+});
+
+/**
+ * 设置页调试模式：注入监测数据，快速构造提醒触发条件。
+ * 只改写内存态（BRI 历史、前台时长、覆盖率采样、冷却），不落盘。
+ */
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!isDebugInjectMetricsRequest(message)) {
+        return false;
+    }
+    try {
+        const now = Date.now();
+
+        // 回填 BRI 历史序列：按引擎采样节奏（30s）铺满指定时间跨度
+        if (message.briValue !== undefined && message.briMinutes !== undefined) {
+            const value = Math.min(Math.max(message.briValue, 0), 100);
+            const spanMs = Math.min(Math.max(message.briMinutes, 0), 60) * 60_000;
+            for (let offset = spanMs; offset >= 0; offset -= 30_000) {
+                briHistoryBuffer.push(value, now - offset);
+            }
+        }
+
+        // 改写连续前台时长（硬门槛：>=30min）
+        if (message.frontMinutes !== undefined) {
+            sessionTracker.debugSetFrontMinutes(message.frontMinutes);
+        }
+
+        // 铺满 120s 评估窗口采样：覆盖率拉到 1，同时刷新引擎样本新鲜度
+        if (message.fillCoverage) {
+            for (let offset = 120_000; offset >= 0; offset -= 20_000) {
+                dataQualityGate.recordSample(now - offset);
+            }
+            engine.debugTouchSample();
+        }
+
+        // 清零冷却，允许立即再次命中触发路径
+        if (message.resetCooldown) {
+            triggerEngine.resetCooldown();
+        }
+
+        const response: DebugInjectMetricsResponse = { ok: true };
+        sendResponse(response);
+    } catch (e: unknown) {
+        const response: DebugInjectMetricsResponse = { ok: false, error: (e as Error).message };
+        sendResponse(response);
+    }
+    return false; // 同步应答，无需保持通道
+});
+
+/** 设置页调试模式：手动执行一次认知引擎计算，返回本次 tick 后的最新输出 */
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!isDebugEngineTickRequest(message)) {
+        return false;
+    }
+    void (async () => {
+        try {
+            const engineResult = await engine.forceTick();
+            const response: DebugEngineTickResponse = { ok: true, engineResult };
+            sendResponse(response);
+        } catch (e: unknown) {
+            const response: DebugEngineTickResponse = {
+                ok: false,
+                error: (e as Error).message,
+                engineResult: null,
+            };
+            sendResponse(response);
+        }
+    })();
+    return true; // 保持 sendResponse 通道开放（异步响应）
 });
 
 chrome.runtime.onStartup.addListener(async () => {

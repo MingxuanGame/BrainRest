@@ -80,6 +80,44 @@ export interface DebugStateResponse {
     engineInternals: EngineInternals;
 }
 
+/** options 调试模式 -> background：注入监测数据以快速构造提醒触发条件 */
+export interface DebugInjectMetricsRequest {
+    type: "debug_inject_metrics";
+    /** 回填 BRI 历史序列的数值（配合 briMinutes 使用） */
+    briValue?: number;
+    /** 回填 BRI 历史序列的时间跨度 (min)，按 30s 间隔回填 */
+    briMinutes?: number;
+    /** 直接改写连续前台时长 (min) */
+    frontMinutes?: number;
+    /** 铺满 120s 评估窗口的采样，把数据覆盖率拉到 1 并刷新新鲜度 */
+    fillCoverage?: boolean;
+    /** 清零触发冷却计时 */
+    resetCooldown?: boolean;
+}
+
+/** background -> options：注入结果 */
+export interface DebugInjectMetricsResponse {
+    ok: boolean;
+    error?: string;
+}
+
+/** options 调试模式 -> background：手动执行一次认知引擎计算 */
+export interface DebugEngineTickRequest {
+    type: "debug_engine_tick";
+}
+
+/** background -> options：手动计算结果（engineResult 为本次 tick 后的最新输出） */
+export interface DebugEngineTickResponse {
+    ok: boolean;
+    error?: string;
+    engineResult: BRIResult | null;
+}
+
+/** options 调试模式 -> content：强制对所在页面执行一次 AI 分类（content 中转 categorize） */
+export interface DebugForceCategorizeRequest {
+    type: "debug_force_categorize";
+}
+
 /** popup -> content：调试 ping（经 chrome.tabs.sendMessage 发往活动标签页） */
 export interface DebugContentPingRequest {
     type: "debug_content_ping";
@@ -110,7 +148,13 @@ export interface DebugContentPingResponse {
 }
 
 /** 运行时消息判别 */
-export type RuntimeMessage = CategorizeRequest | DebugStateRequest | DebugContentPingRequest;
+export type RuntimeMessage =
+    | CategorizeRequest
+    | DebugStateRequest
+    | DebugContentPingRequest
+    | DebugInjectMetricsRequest
+    | DebugEngineTickRequest
+    | DebugForceCategorizeRequest;
 
 export function isCategorizeRequest(m: unknown): m is CategorizeRequest {
     return typeof m === "object" && m !== null && (m as { type?: unknown }).type === "categorize";
@@ -127,5 +171,29 @@ export function isDebugContentPingRequest(m: unknown): m is DebugContentPingRequ
         typeof m === "object" &&
         m !== null &&
         (m as { type?: unknown }).type === "debug_content_ping"
+    );
+}
+
+export function isDebugInjectMetricsRequest(m: unknown): m is DebugInjectMetricsRequest {
+    return (
+        typeof m === "object" &&
+        m !== null &&
+        (m as { type?: unknown }).type === "debug_inject_metrics"
+    );
+}
+
+export function isDebugEngineTickRequest(m: unknown): m is DebugEngineTickRequest {
+    return (
+        typeof m === "object" &&
+        m !== null &&
+        (m as { type?: unknown }).type === "debug_engine_tick"
+    );
+}
+
+export function isDebugForceCategorizeRequest(m: unknown): m is DebugForceCategorizeRequest {
+    return (
+        typeof m === "object" &&
+        m !== null &&
+        (m as { type?: unknown }).type === "debug_force_categorize"
     );
 }
