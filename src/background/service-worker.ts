@@ -29,7 +29,7 @@ import type { Event } from '../models/events/Event'
 import type { PageComplexitySnapshot } from './engine/types'
 import { loadOption } from '../services/OptionStore'
 import { compareTime } from '../utils/time'
-import { sleepTimeStore } from '../services/SleepTimeStore'
+import { routineStore } from '../services/RoutineStore'
 
 // 启动认知负荷引擎（纯计算，结果通过 engine.getLastResult() 查询）
 engine.start()
@@ -210,7 +210,7 @@ chrome.runtime.onStartup.addListener(async () => {
     const now = new Date()
     const options = await loadOption()
     // 如果上次事件发生在用户的睡眠时间之前，并且当前时间在用户的清醒时间之后
-    // 就认为用户已经休息过了。记录睡眠时刻到数据库
+    // 就认为用户已经休息过了。记录入睡时刻（最后活动时间）与起床时刻（当前时间）到数据库
     if (
         compareTime(
             [lastEventDate.getHours(), lastEventDate.getMinutes()],
@@ -222,10 +222,12 @@ chrome.runtime.onStartup.addListener(async () => {
         if (lastEventDate.getHours() >= 0) {
             day -= 1
         }
-        await sleepTimeStore.put(
+        await routineStore.put(
             `${lastEventDate.getFullYear()}-${lastEventDate.getMonth() + 1}-${day}`,
             lastEventDate.getHours(),
             lastEventDate.getMinutes(),
+            now.getHours(),
+            now.getMinutes(),
         )
     }
 })
