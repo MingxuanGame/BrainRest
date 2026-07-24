@@ -4,13 +4,14 @@ import { client, initClient } from './AI'
 import { urlCategoryDB } from './UrlCategoryDataBaseManager'
 import { loadOption } from './OptionStore'
 import { extractDomain } from '../models/url'
+import { convert } from 'markitdown-html'
 
 const categorifyPrompt = `
-You are a website URL classifier. You will be given a URL and the HTML content of its corresponding web page. Based on both, determine the category that the URL belongs to.
+You are a website URL classifier. You will be given a URL and the converted Markdown from the HTML content of its corresponding web page. Based on both, determine the category that the URL belongs to.
 
 # Input
 - URL: the full URL to classify
-- HTML: the HTML content of the page at that URL
+- Converted Markdown (from HTML): the converted Markdown content of the page at that URL
 
 # Available Categories
 
@@ -46,7 +47,8 @@ social_feed
 
 Now classify the following input:
 URL: {{url}}
-HTML: {{html}}
+Converted Markdown (from HTML): {{convertedMarkdown}}
+Title: {{title}}
 `
 
 export async function categorifyModel(
@@ -54,7 +56,12 @@ export async function categorifyModel(
     url: string,
     html: string,
 ): Promise<{ domain: string; category: UrlCategory }> {
-    const prompt = categorifyPrompt.replace('{{url}}', url).replace('{{html}}', html)
+    const convertedMarkdown = convert(html)
+
+    const prompt = categorifyPrompt
+        .replace('{{url}}', url)
+        .replace('{{convertedMarkdown}}', convertedMarkdown.markdown)
+        .replace('{{title}}', convertedMarkdown.title ?? '')
     if (!client) {
         throw new Error('AI client not initialized. Call initClient first.')
     }
