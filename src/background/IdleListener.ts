@@ -1,4 +1,4 @@
-import { dispatcher } from "./RuleEventDispatcher";
+import {engine} from "./engine/CognitiveLoadEngine";
 
 /**
  * 通过 chrome.idle 监听系统锁屏 / 息屏状态，驱动休息权重 R 的"主动锁屏"场景。
@@ -9,10 +9,10 @@ import { dispatcher } from "./RuleEventDispatcher";
 chrome.idle.setDetectionInterval(60);
 
 chrome.idle.onStateChanged.addListener((state) => {
-  dispatcher.setDeviceLocked(state === "locked");
+    engine.setDeviceLocked(state === "locked");
 });
 
 // 启动时对齐一次当前状态
 chrome.idle.queryState(60, (state) => {
-  dispatcher.setDeviceLocked(state === "locked");
+    engine.setDeviceLocked(state === "locked");
 });

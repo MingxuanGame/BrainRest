@@ -2,25 +2,46 @@ import "./TabListener";
 import "./WindowFocusListener";
 import "./IdleListener";
 import {queue} from "./EventQueue";
-import {dispatcher} from "./RuleEventDispatcher";
+import {engine} from "./engine/CognitiveLoadEngine";
+import {tabEventBuffer} from "./engine/TabEventBuffer";
 import {getCategory} from "../services/CategoryService";
-import {isCategorizeRequest, type CategorizeResponse} from "../messages";
+import {type CategorizeResponse, isCategorizeRequest} from "../messages";
+import type {Event} from "../models/events/Event";
+import type {PageComplexitySnapshot} from "./engine/types";
 
-// 启动疲劳指数计算循环，并在触发阈值时输出（后续可接入提醒 UI）
-dispatcher.start();
-dispatcher.onTrigger((result) => {
-  console.log(
-    `[BrainRest] fatigue=${result.fatigue.toFixed(1)} level=${result.level} R=${result.restWeight}`,
-    result.metrics,
-  );
-});
+// 启动认知负荷引擎（纯计算，结果通过 engine.getLastResult() 查询）
+engine.start();
 
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "event-stream") return;
+    if (port.name !== "event-stream") return;
 
-  port.onMessage.addListener((event) => {
-    queue.push(event);
-  });
+    port.onMessage.addListener((message: Event) => {
+        // 页面复杂度事件：转发给引擎，不进入 5s 事件队列
+        if (message.type === "page_complexity") {
+            const raw = message as unknown as Record<string, unknown>;
+            const snapshot: PageComplexitySnapshot = {
+                textDensity: (raw.textDensity as number) ?? 0,
+                tableCount: (raw.tableCount as number) ?? 0,
+                codeCount: (raw.codeCount as number) ?? 0,
+                listCount: (raw.listCount as number) ?? 0,
+                headingCount: (raw.headingCount as number) ?? 0,
+                timestamp: message.timestamp,
+            };
+            engine.receivePageComplexity(snapshot);
+            return;
+        }
+
+        // 标签页激活事件：写入 TabEventBuffer（用于 5min 切换负荷统计）
+        if (message.type === "tab_activated") {
+            tabEventBuffer.pushSwitch(message.timestamp);
+        }
+
+        // 所有事件进入 5s 滑动窗口队列（物理信号计算用）
+        queue.push(message);
+
+        // 转发给引擎（活跃度追踪、数据质量门控等）
+        engine.receiveEvent(message);
+    });
 });
 
 /**
@@ -28,26 +49,25 @@ chrome.runtime.onConnect.addListener((port) => {
  * apiKey 只在 background 持有，页面上下文无法访问；分类结果落 IDB 供下游反查。
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isCategorizeRequest(message)) {
-    return false;
-  }
-  void (async () => {
-    try {
-      const result = await getCategory(message.url, message.html);
-      const response: CategorizeResponse = {
-        ok: true,
-        domain: result.domain,
-        category: result.category,
-      };
-      sendResponse(response);
-    } catch (e) {
-      const response: CategorizeResponse = {
-        ok: false,
-        error: (e as Error).message,
-      };
-      sendResponse(response);
+    if (!isCategorizeRequest(message)) {
+        return false;
     }
-  })();
-  // 返回 true 以保持消息通道开启，等待异步 sendResponse
-  return true;
+    void (async () => {
+        try {
+            const result = await getCategory(message.url, message.html);
+            const response: CategorizeResponse = {
+                ok: true,
+                domain: result.domain,
+                category: result.category,
+            };
+            sendResponse(response);
+        } catch (e: unknown) {
+            const response: CategorizeResponse = {
+                ok: false,
+                error: (e as Error).message,
+            };
+            sendResponse(response);
+        }
+    })();
+    return true; // 保持 sendResponse 通道开放（异步响应）
 });

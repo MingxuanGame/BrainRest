@@ -1,24 +1,17 @@
-import { queue } from "../EventQueue";
-import type { Event } from "../../models/events/Event";
+import {tabEventBuffer} from "../engine/TabEventBuffer";
 
 /**
- * 视为"标签页乱跳"的事件类型：激活其它标签、页内跳转、开/关标签。
- * 与 SwitchEntropyAnalyzer 的口径一致，并额外纳入真正的标签激活事件。
+ * 统计最近 5 分钟内的标签页激活次数 N_switch。
+ * 数据来源：TabEventBuffer（由 TabListener 写入）。
  */
-const SWITCH_TYPES = new Set<string>([
-  "tab_activated",
-  "tab_changed",
-  "tab_created",
-  "tab_closed",
-]);
-
-function isSwitchEvent(event: Event): boolean {
-  return SWITCH_TYPES.has(event.type);
+export function calculateTabSwitchCount(): number {
+    return tabEventBuffer.getSwitchCount();
 }
 
 /**
- * 统计当前 5s 滑动窗口内的标签页切换次数（T 指标的原始值）。
+ * 统计最近 5 分钟内的页面加载完成次数 N_load。
+ * 数据来源：TabEventBuffer（由 TabListener 写入）。
  */
-export function calculateTabSwitchCount(): number {
-  return queue.getEvents().filter(isSwitchEvent).length;
+export function calculatePageLoadCount(): number {
+    return tabEventBuffer.getLoadCount();
 }

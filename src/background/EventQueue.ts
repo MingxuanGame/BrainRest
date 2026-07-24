@@ -1,4 +1,4 @@
-import type { Event } from "../models/events/Event";
+import type {Event} from "../models/events/Event";
 
 export const SLIDE_WINDOW_MS = 5000;
 
