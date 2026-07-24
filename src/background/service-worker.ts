@@ -228,13 +228,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     try {
         const now = Date.now();
 
-        // 回填 BRI 历史序列：按引擎采样节奏（30s）铺满指定时间跨度
+        // 回填 BRI 历史序列：按引擎采样节奏（30s）铺满指定时间跨度；
+        // 同时铺设展示值并重建 lastResult，使 popup 立即反映注入的负荷等级
         if (message.briValue !== undefined && message.briMinutes !== undefined) {
             const value = Math.min(Math.max(message.briValue, 0), 100);
             const spanMs = Math.min(Math.max(message.briMinutes, 0), 60) * 60_000;
             for (let offset = spanMs; offset >= 0; offset -= 30_000) {
                 briHistoryBuffer.push(value, now - offset);
             }
+            engine.debugSeedBriDisplay(value);
         }
 
         // 改写连续前台时长（硬门槛：>=30min）

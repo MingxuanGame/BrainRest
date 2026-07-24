@@ -200,6 +200,36 @@ class CognitiveLoadEngine {
         this.latestSampleAt = Date.now();
     }
 
+    /**
+     * 调试专用：直接铺设展示值 BRI_display 并重建 lastResult，
+     * 使 popup 立即反映注入的负荷等级；后续 tick 从该值继续平滑衰减。
+     */
+    debugSeedBriDisplay(value: number): void {
+        const seeded = clamp(value, 0, 100);
+        this.prevBriDisplay = seeded;
+        const base: BRIResult = this.lastResult ?? {
+            clCog: 0,
+            clPhy: 0,
+            briRaw: seeded,
+            bri: seeded,
+            briDisplay: seeded,
+            kPersonal: personalCalibration.getK(),
+            cData: dataQualityGate.getCoverage(),
+            level: levelOf(seeded),
+            triggerPath: null,
+            cognitiveSignals: { D: 0, B: 0, rho: 0, S: 0, P: 0, T: 0 },
+            physicalSignals: { E: 0, L: 0, I: 0, R: 0, R_rest: 0 },
+            timestamp: Date.now(),
+            pageType: this.currentPageType,
+        };
+        this.lastResult = {
+            ...base,
+            briDisplay: seeded,
+            level: levelOf(seeded),
+            timestamp: Date.now(),
+        };
+    }
+
     /** 调试专用：立即执行一次 tick，返回本次计算后的最新结果 */
     async forceTick(): Promise<BRIResult | null> {
         await this.tick();

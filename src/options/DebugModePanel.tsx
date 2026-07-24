@@ -106,7 +106,7 @@ export default function DebugModePanel() {
             });
             setNotice({
                 tone: "success",
-                message: `已注入：BRI ${value} × ${minutes}min，前台 ${front}min${fillCoverage ? "，覆盖率已铺满" : ""}${resetCooldown ? "，冷却已清零" : ""}。`,
+                message: `已注入：BRI ${value} × ${minutes}min，前台 ${front}min${fillCoverage ? "，覆盖率已铺满" : ""}${resetCooldown ? "，冷却已清零" : ""}；popup 负荷等级已同步。`,
             });
         });
 
@@ -123,7 +123,7 @@ export default function DebugModePanel() {
             setNotice({
                 tone: "success",
                 message:
-                    "已一键构造触发条件（路径 A）。点击「立即计算一次」后 triggerPath 应命中。",
+                    "已一键构造触发条件（路径 A），popup 负荷等级已同步。点击「立即计算一次」后 triggerPath 应命中。",
             });
         });
 
