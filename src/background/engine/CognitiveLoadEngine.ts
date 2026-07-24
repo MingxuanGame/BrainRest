@@ -16,11 +16,13 @@ import {urlCategoryDB} from "../../services/UrlCategoryDataBaseManager";
 /* 常量                                                               */
 /* ------------------------------------------------------------------ */
 
-/** 宏观 tick 周期 (ms)：30s */
-const TICK_MS = 30_000;
+/** 宏观 tick 周期：30s */
+const TICK_MINUTE = 0.5;
 
 /** 平滑系数 α（一阶低通滤波） */
 const SMOOTHING_ALPHA = 0.25;
+
+const ALARM_NAME = "brainrest-engine-tick";
 
 /** 归入"用户主动交互"的事件类型 */
 const INTERACTION_TYPES = new Set<string>([
@@ -62,8 +64,6 @@ function levelOf(briDisplay: number): LoadLevel {
 class CognitiveLoadEngine {
     private static instance: CognitiveLoadEngine | null = null;
 
-    private timer: ReturnType<typeof setInterval> | null = null;
-
     /** 上一周期的 BRI_display */
     private prevBriDisplay = 0;
 
@@ -103,17 +103,22 @@ class CognitiveLoadEngine {
     /* 生命周期                                                         */
     /* ---------------------------------------------------------------- */
 
-    start(): void {
-        if (this.timer) return;
-        this.timer = setInterval(() => {
-            void this.tick();
-        }, TICK_MS);
+    async start(): Promise<void> {
+        const alarm = await chrome.alarms.get(ALARM_NAME);
+        if (!alarm) {
+            await chrome.alarms.create(ALARM_NAME, {
+                periodInMinutes: TICK_MINUTE,
+            });
+            chrome.alarms.onAlarm.addListener((alarm) => {
+                if (alarm.name === ALARM_NAME) {
+                    this.tick();
+                }
+            });
+        }
     }
 
-    stop(): void {
-        if (!this.timer) return;
-        clearInterval(this.timer);
-        this.timer = null;
+    async stop(): Promise<void> {
+        await chrome.alarms.clear(ALARM_NAME);
     }
 
     /* ---------------------------------------------------------------- */
