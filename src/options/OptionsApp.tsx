@@ -4,7 +4,7 @@ import { clearOption, loadOption, saveOption } from "../services/OptionStore";
 import { eventDB } from "../services/EventDataBaseManager";
 import { urlCategoryDB } from "../services/UrlCategoryDataBaseManager";
 import { timeDataStore } from "../services/TimeDataStore";
-import { sleepTimeStore } from "../services/SleepTimeStore";
+import { routineStore } from "../services/RoutineStore";
 import type { Option } from "../models/Option";
 import { Card, InlineNotice, Toggle } from "../ui/components";
 import { PRODUCT_BOUNDARY_COPY } from "../ui/bridge";
@@ -119,7 +119,7 @@ export default function OptionsApp() {
                 eventDB.clear(),
                 urlCategoryDB.clear(),
                 timeDataStore.clear(),
-                sleepTimeStore.clear(),
+                routineStore.clear(),
             ]);
             setApiKeyInput("");
             setNotice({ tone: "success", message: "全部本地数据已清除。" });
