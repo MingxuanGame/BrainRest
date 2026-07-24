@@ -9,6 +9,12 @@ import type {
 import { clearOption, loadOption, saveOption } from '../../services/OptionStore'
 import { urlCategoryDB } from '../../services/UrlCategoryDataBaseManager'
 import { eventDB } from '../../services/EventDataBaseManager'
+import { type DailyTimeRecord, timeDataStore, toDayKey } from '../../services/TimeDataStore'
+import {
+    categoryDurationsOf,
+    domainDurationsOf,
+    UNKNOWN_CATEGORY,
+} from '../../background/DomainTimeTracker'
 import { createEvent } from '../../models/events/Event'
 import type { Event } from '../../models/events/Event'
 
@@ -768,6 +774,138 @@ const eventDbGroup: TestGroup = {
 /* 导出全部分组                                                        */
 /* ------------------------------------------------------------------ */
 
+const persistenceGroup: TestGroup = {
+    id: 'persistence',
+    name: '持久化层 (WAL + 时长追踪)',
+    scope: 'services',
+    subTests: [
+        {
+            id: 'eventdb-mark-before',
+            name: 'markProcessedBefore 按上界标记',
+            run: async () => {
+                const now = Date.now()
+                const older: Event = {
+                    type: 'debug_test',
+                    url: 'debug://mb-old',
+                    processed: 0,
+                    timestamp: now - 5000,
+                }
+                const newer: Event = {
+                    type: 'debug_test',
+                    url: 'debug://mb-new',
+                    processed: 0,
+                    timestamp: now,
+                }
+                await eventDB.batchPut([older, newer])
+                await eventDB.markProcessedBefore(now - 2500)
+                const unprocessed = await eventDB.getUnprocessed()
+                const oldStillThere = unprocessed.some((e) => e.timestamp === older.timestamp)
+                const newStillThere = unprocessed.some((e) => e.timestamp === newer.timestamp)
+                // 清理：标记剩余测试事件
+                await eventDB.markProcessed([newer.timestamp])
+                if (oldStillThere) {
+                    throw new Error('上界之前的事件未被标记为已处理')
+                }
+                if (!newStillThere) {
+                    throw new Error('上界之后的事件不应被标记')
+                }
+                return '仅 timestamp <= cutoff 的事件被收敛为已处理'
+            },
+        },
+        {
+            id: 'timedata-store',
+            name: 'TimeDataStore putDay / getDay / prune',
+            run: async () => {
+                const today = toDayKey()
+                const record: DailyTimeRecord = {
+                    dayKey: today,
+                    startTime: Date.now(),
+                    endTime: Date.now(),
+                    apps: { 'store-test.example': [[Date.now(), Date.now() + 1000]] },
+                    checkpointAt: Date.now(),
+                }
+                await timeDataStore.putDay(record)
+                const read = await timeDataStore.getDay(today)
+                if (!read || read.apps['store-test.example'] === undefined) {
+                    throw new Error('putDay 后 getDay 未读到写入的记录')
+                }
+
+                // 写入一条远古旧日，prune 应删除
+                const ancientDay = toDayKey(new Date(2000, 0, 1).getTime())
+                const oldRecord: DailyTimeRecord = {
+                    dayKey: ancientDay,
+                    startTime: 0,
+                    endTime: 0,
+                    apps: {},
+                    checkpointAt: 0,
+                }
+                await timeDataStore.putDay(oldRecord)
+                await timeDataStore.prune()
+                const prunedOld = await timeDataStore.getDay(ancientDay)
+                if (prunedOld !== undefined) {
+                    throw new Error('prune 后过期旧日仍存在')
+                }
+                return 'putDay/getDay 可用，prune 正确删除过期旧日'
+            },
+        },
+        {
+            id: 'domain-durations',
+            name: 'domainDurationsOf 开放段以 now 结算',
+            run: async () => {
+                const now = Date.now()
+                const record = {
+                    startTime: now - 60000,
+                    endTime: now,
+                    apps: {
+                        'dur-test.example': [
+                            [now - 60000, now - 30000],
+                            [now - 20000, null],
+                        ],
+                    },
+                } as unknown as DailyTimeRecord
+                const durations = domainDurationsOf(record, now)
+                const seconds = durations['dur-test.example']
+                // 30s （已关闭） + 20s （开放段以 now 结算）≈ 50s
+                if (Math.abs(seconds - 50) > 1) {
+                    throw new Error(`预期约 50s，实际 ${seconds.toFixed(1)}s`)
+                }
+                return `开放段正确以 now 结算，总时长 ${seconds.toFixed(1)}s`
+            },
+        },
+        {
+            id: 'category-durations',
+            name: 'categoryDurationsOf 归类汇总 + unknown 兑底',
+            run: async () => {
+                const now = Date.now()
+                const known = 'cat-test.example'
+                await urlCategoryDB.put(known, 'deep_work_productivity')
+                try {
+                    const record = {
+                        startTime: now - 90000,
+                        endTime: now,
+                        apps: {
+                            [known]: [[now - 60000, now]],
+                            'cat-unknown.example': [[now - 30000, now]],
+                        },
+                    } as unknown as DailyTimeRecord
+                    const result = await categoryDurationsOf(record, now)
+                    const work = result['deep_work_productivity'] ?? 0
+                    const unknown = result[UNKNOWN_CATEGORY] ?? 0
+                    if (Math.abs(work - 60) > 1) {
+                        throw new Error(`已分类时长预期约 60s，实际 ${work.toFixed(1)}s`)
+                    }
+                    if (Math.abs(unknown - 30) > 1) {
+                        throw new Error(`unknown 桶预期约 30s，实际 ${unknown.toFixed(1)}s`)
+                    }
+                    return '已分类归入对应桶，未分类归入 unknown 兑底桶'
+                } finally {
+                    await urlCategoryDB.delete(known)
+                }
+            },
+        },
+    ],
+}
+
 export const TEST_GROUPS: TestGroup[] = [
     swGroup,
     queueGroup,
@@ -778,4 +916,5 @@ export const TEST_GROUPS: TestGroup[] = [
     optionGroup,
     urlDbGroup,
     eventDbGroup,
+    persistenceGroup,
 ]
