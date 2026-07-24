@@ -44,7 +44,7 @@ function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max)
 }
 
-function levelOf(briDisplay: number): LoadLevel {
+export function levelOf(briDisplay: number): LoadLevel {
     if (briDisplay >= 70) return 'high'
     if (briDisplay >= 40) return 'moderate'
     return 'low'
