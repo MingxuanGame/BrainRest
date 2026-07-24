@@ -218,8 +218,12 @@ chrome.runtime.onStartup.addListener(async () => {
         ) <= 0 &&
         compareTime([now.getHours(), now.getMinutes()], options.earliestWakeTime) >= 0
     ) {
+        let day = lastEventDate.getDate()
+        if (lastEventDate.getHours() >= 0) {
+            day -= 1
+        }
         await sleepTimeStore.put(
-            `${lastEventDate.getFullYear()}-${lastEventDate.getMonth() + 1}-${lastEventDate.getDate()}`,
+            `${lastEventDate.getFullYear()}-${lastEventDate.getMonth() + 1}-${day}`,
             lastEventDate.getHours(),
             lastEventDate.getMinutes(),
         )
