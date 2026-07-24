@@ -27,6 +27,9 @@ import {
 } from '../messages'
 import type { Event } from '../models/events/Event'
 import type { PageComplexitySnapshot } from './engine/types'
+import { loadOption } from '../services/OptionStore'
+import { compareTime } from '../utils/time'
+import { sleepTimeStore } from '../services/SleepTimeStore'
 
 // 启动认知负荷引擎（纯计算，结果通过 engine.getLastResult() 查询）
 engine.start()
@@ -198,4 +201,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     sendResponse(response)
     return false // 同步应答，无需保持通道
+})
+
+chrome.runtime.onStartup.addListener(async () => {
+    const lastEvent = await eventDB.getRecentEvent()
+    if (!lastEvent) return
+    const lastEventDate = new Date(lastEvent.timestamp)
+    const now = new Date()
+    const options = await loadOption()
+    // 如果上次事件发生在用户的睡眠时间之前，并且当前时间在用户的清醒时间之后
+    // 就认为用户已经休息过了。记录睡眠时刻到数据库
+    if (
+        compareTime(
+            [lastEventDate.getHours(), lastEventDate.getMinutes()],
+            options.latestSleepTime,
+        ) <= 0 &&
+        compareTime([now.getHours(), now.getMinutes()], options.earliestWakeTime) >= 0
+    ) {
+        await sleepTimeStore.put(
+            `${lastEventDate.getFullYear()}-${lastEventDate.getMonth() + 1}-${lastEventDate.getDate()}`,
+            lastEventDate.getHours(),
+            lastEventDate.getMinutes(),
+        )
+    }
 })

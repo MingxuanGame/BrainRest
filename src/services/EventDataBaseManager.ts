@@ -113,6 +113,16 @@ class EventDataBaseManager {
         }
         await tx.done
     }
+
+    /** 获取最近一条事件（按 timestamp 降序） */
+    async getRecentEvent(): Promise<Event | undefined> {
+        const db = await this.dbPromise
+        const tx = db.transaction(EVENT_STORE, 'readonly')
+        const cursor = await tx.store.openCursor(null, 'prev')
+        const recentEvent = cursor?.value
+        await tx.done
+        return recentEvent
+    }
 }
 
 /** 全局导出的单例 */

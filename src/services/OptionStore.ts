@@ -10,6 +10,9 @@ const DEFAULT_OPTION: Option = {
     aiProvider: 'openai',
     categorifyModel: 'gpt-4o-mini',
     apiKey: '',
+    latestSleepTime: [4, 0],
+    earliestWakeTime: [6, 0],
+    sleepTime: [22, 0],
 }
 
 type RawProvider = 'openai' | 'deepseek' | AbsoluteUrl

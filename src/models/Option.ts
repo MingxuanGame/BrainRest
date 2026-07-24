@@ -4,4 +4,8 @@ export interface Option {
     aiProvider: 'openai' | 'deepseek' | AbsoluteUrl // TODO: add more providers
     categorifyModel: string
     apiKey: string
+
+    latestSleepTime: [number, number] // [hour, minute], 24-hour format
+    earliestWakeTime: [number, number] // [hour, minute], 24-hour format
+    sleepTime: [number, number] // [hour, minute], 24-hour format
 }
