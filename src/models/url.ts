@@ -4,9 +4,9 @@
  */
 export function extractDomain(url: string): string | null {
     try {
-        const hostname = new URL(url).hostname.toLowerCase()
-        return hostname.replace(/^www\./, '')
+        const hostname = new URL(url).hostname.toLowerCase();
+        return hostname.replace(/^www\./, "");
     } catch {
-        return null
+        return null;
     }
 }
