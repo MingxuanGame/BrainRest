@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { crx } from '@crxjs/vite-plugin'
-import manifest from './src/manifest.ts'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { crx } from "@crxjs/vite-plugin";
+import manifest from "./src/manifest.ts";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,7 +10,7 @@ export default defineConfig({
         crx({
             manifest,
             contentScripts: {
-                standaloneFiles: ['src/content/index.ts'],
+                standaloneFiles: ["src/content/index.ts"],
             },
         }),
     ],
@@ -21,4 +21,4 @@ export default defineConfig({
     server: {
         sourcemapIgnoreList: () => false,
     },
-})
+});
