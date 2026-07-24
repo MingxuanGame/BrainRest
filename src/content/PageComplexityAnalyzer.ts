@@ -1,6 +1,7 @@
 import {sendEvent} from "./EventChannel";
 import type {Event} from "../models/events/Event";
 import {createEvent} from "../models/events/Event";
+import type {PageComplexitySnapshot} from "../background/engine/types";
 
 /* ------------------------------------------------------------------ */
 /* 常量                                                               */
@@ -122,6 +123,19 @@ function countStructureElements(): {
 /* 采样与上报                                                          */
 
 /* ------------------------------------------------------------------ */
+
+/** 即时采集一份页面复杂度快照（供 DebugResponder 按需调用，不上报） */
+export function collectComplexitySnapshot(): PageComplexitySnapshot {
+    const {tableCount, codeCount, listCount, headingCount} = countStructureElements();
+    return {
+        textDensity: calculateTextDensity(),
+        tableCount,
+        codeCount,
+        listCount,
+        headingCount,
+        timestamp: Date.now(),
+    };
+}
 
 function sampleAndReport(): void {
     // 页面不可见时跳过采样

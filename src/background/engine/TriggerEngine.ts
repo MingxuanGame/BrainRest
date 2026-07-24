@@ -125,6 +125,11 @@ export class TriggerEngine {
         this.lastTriggeredAt = 0;
     }
 
+    /** 获取上次触发时间戳（0 = 从未触发） */
+    getLastTriggeredAt(): number {
+        return this.lastTriggeredAt;
+    }
+
     /* ---------------------------------------------------------------- */
     /* 路径 A：持续高负荷                                                */
     /* ---------------------------------------------------------------- */
