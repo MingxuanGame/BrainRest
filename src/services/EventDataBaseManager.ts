@@ -1,4 +1,4 @@
-import {openDB, type IDBPDatabase} from "idb";
+import {type IDBPDatabase, openDB} from "idb";
 import type {Event} from "../models/events/Event";
 
 const DB_NAME = "brainrest";

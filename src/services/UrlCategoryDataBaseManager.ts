@@ -1,4 +1,4 @@
-import {openDB, type IDBPDatabase} from "idb";
+import {type IDBPDatabase, openDB} from "idb";
 import type {UrlCategory} from "../models/types";
 
 export type {UrlCategory};
@@ -59,7 +59,7 @@ class UrlCategoryDataBaseManager {
     }
 
     /** 批量写入或更新 */
-    async batchPut(records: Array<{domain: string; category: UrlCategory}>): Promise<void> {
+    async batchPut(records: Array<{ domain: string; category: UrlCategory }>): Promise<void> {
         if (records.length === 0) return;
         const db = await this.dbPromise;
         const tx = db.transaction(STORE, "readwrite");

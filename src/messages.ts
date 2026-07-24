@@ -19,5 +19,5 @@ export interface CategorizeResponse {
 export type RuntimeMessage = CategorizeRequest;
 
 export function isCategorizeRequest(m: unknown): m is CategorizeRequest {
-    return typeof m === "object" && m !== null && (m as {type?: unknown}).type === "categorize";
+    return typeof m === "object" && m !== null && (m as { type?: unknown }).type === "categorize";
 }
